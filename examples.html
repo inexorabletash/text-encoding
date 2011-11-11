@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<script src="encoding.js"></script>
+<script>
+function encodeArrayOfStrings(strings) {
+  var len, i, bytes, view, offset;
+
+  len = Uint32Array.BYTES_PER_ELEMENT;
+  for (i = 0; i < strings.length; i += 1) {
+    len += Uint32Array.BYTES_PER_ELEMENT;
+    len += stringEncoding.encodedLength(strings[i], "UTF-8");
+  }
+
+  bytes = new Uint8Array(len);
+  view = new DataView(bytes.buffer);
+  offset = 0;
+
+  view.setUint32(offset, strings.length);
+  offset += Uint32Array.BYTES_PER_ELEMENT;
+  for (i = 0; i < strings.length; i += 1) {
+    len = stringEncoding.encode(strings[i], view,
+                                offset + Uint32Array.BYTES_PER_ELEMENT,
+                                "UTF-8");
+    view.setUint32(offset, len);
+    offset += Uint32Array.BYTES_PER_ELEMENT + len;
+  }
+  return bytes.buffer;
+}
+
+function decodeArrayOfStrings(buffer) {
+  var view, offset, num_strings, strings, i, len;
+
+  view = new DataView(buffer);
+  offset = 0;
+  strings = [];
+
+  num_strings = view.getUint32(offset);
+  offset += Uint32Array.BYTES_PER_ELEMENT;
+  for (i = 0; i < num_strings; i += 1) {
+    len = view.getUint32(offset);
+    offset += Uint32Array.BYTES_PER_ELEMENT;
+    strings[i] = stringEncoding.decode(view, offset, len,
+                                       "UTF-8");
+    offset += len;
+  }
+  return strings;
+}
+
+var strings = ["Hello", "string", "encoding!"];
+var buffer = encodeArrayOfStrings(strings);
+var results = decodeArrayOfStrings(buffer);
+document.write("Encoded " + JSON.stringify(strings) + "<br>");
+document.write("Decoded " + JSON.stringify(results) + "<br>");
+</script>
