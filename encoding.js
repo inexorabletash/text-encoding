@@ -16,6 +16,12 @@
          }
          octets[pos++] = o;
        },
+       offset: function (n) {
+         pos = n;
+         if (pos >= octets.length) {
+           throw new RangeError("Reading past the end of the buffer");
+         }
+       },
        pos: function() {
          return pos;
        },
@@ -42,8 +48,10 @@
      LENGTH: 1
    };
 
-   var codecs = {
-     'BINARY': {
+   var codecs = [
+     {
+       name: 'binary',
+       labels: ['binary'],
        encode: function(stream, string) {
          var i, octet;
          for (i = 0; i < string.length; i += 1) {
@@ -68,7 +76,9 @@
        }
      },
 
-     'ASCII': {
+     {
+       name: 'ascii',
+       labels: ['ascii'],
        encode: function(stream, string) {
          var i, octet;
          for (i = 0; i < string.length; i += 1) {
@@ -96,7 +106,9 @@
        }
      },
 
-     'ISO-8859-1': {
+     {
+       name: 'iso-8859-1',
+       labels: ['iso-8859-1'],
        encode: function(stream, string) {
          var i, octet;
          for (i = 0; i < string.length; i += 1) {
@@ -121,8 +133,9 @@
        }
      },
 
-     'UTF-8': {
-       byteOrderMark:  [0xef, 0xbb, 0xbf],
+     {
+       name: 'utf-8',
+       labels: ['utf-8'],
        encode: function(stream, string) {
          var i, codepoint, codepoint2;
 
@@ -169,10 +182,6 @@
        decode: function(stream, operation) {
          var string = '', codepoint, lpos;
 
-         if (stream.match(this.byteOrderMark)) {
-           this.byteOrderMark.forEach(function() { stream.read(); });
-         }
-
          // continuation byte
          function cbyte() {
            if (stream.eos()) {
@@ -218,8 +227,9 @@
        }
      },
 
-     'UTF-16LE': {
-       byteOrderMark: [0xff, 0xfe],
+     {
+       name: 'utf-16le',
+       labels: ['utf-16le', 'utf-16'],
        encode: function(stream, string) {
          var i, codepoint;
          for (i = 0; i < string.length; i += 1) {
@@ -230,13 +240,6 @@
        },
        decode: function(stream, operation) {
          var string = '', codepoint, lpos;
-
-         if (stream.match(this.byteOrderMark)) {
-           stream.read();
-           stream.read();
-         } else if (stream.match(codecs['UTF-16BE'].byteOrderMark)) {
-           throw new RangeError('Mismatched UTF-16 byteOrderMark');
-         }
 
          while (!stream.eos()) {
            lpos = stream.pos();
@@ -250,8 +253,9 @@
        }
      },
 
-     'UTF-16BE': {
-       byteOrderMark: [0xfe, 0xff],
+     {
+       name: 'utf-16be',
+       labels: ['utf-16be'],
        encode: function(stream, string) {
          var i, codepoint;
          for (i = 0; i < string.length; i += 1) {
@@ -263,13 +267,6 @@
        decode: function(stream, operation) {
          var string = '', codepoint, lpos;
 
-         if (stream.match(this.byteOrderMark)) {
-           stream.read();
-           stream.read();
-         } else if (stream.match(codecs['UTF-16LE'].byteOrderMark)) {
-           throw new RangeError('Mismatched UTF-16 byteOrderMark');
-         }
-
          while (!stream.eos()) {
            lpos = stream.pos();
            codepoint = (stream.read() << 8) | stream.read();
@@ -280,144 +277,92 @@
          }
          return string;
        }
-     },
+     }
+   ];
 
-     'UTF-16': {
-       encode: function(stream, string) {
-         var encoding = 'UTF-16LE';
-         codecs[encoding].byteOrderMark.forEach(
-           function(b) { stream.write(b); });
-         codecs[encoding].encode(stream, string);
-       },
-       decode: function(stream, operation) {
-         if (stream.match(codecs['UTF-16BE'].byteOrderMark)) {
-           return codecs['UTF-16BE'].decode(stream, operation);
-         } else if (stream.match(codecs['UTF-16LE'].byteOrderMark)) {
-           return codecs['UTF-16LE'].decode(stream, operation);
-         } else {
-           throw new RangeError('Missing byteOrderMark');
-         }
+   function getEncoding(label) {
+     label = String(label).trim().toLowerCase();
+     var i, labels;
+     for (i = 0; i < codecs.length; ++i) {
+       if (codecs[i].labels.indexOf(label) !== -1) {
+         return codecs[i];
        }
      }
-   };
+     throw new Error("Unknown encoding: " + label);
+   }
 
-   var DEFAULT_ENCODING = 'UTF-8';
+   var DEFAULT_ENCODING = 'utf-8';
 
    function toUint32(x) { return x >>> 0; }
    function toInt32(x) { return x >> 0; }
 
-   function decode(array,
-                   byteOffset,
-                   byteLength,
+   function decode(view,
                    encoding) {
+     //if (!(view instanceof ArrayBufferView)) {
+     //  throw new TypeError('Expected ArrayBufferView');
+     //}
+     encoding = (arguments.length >= 2) ? String(encoding) : DEFAULT_ENCODING;
 
-     var buffer, bufferLength, bufferOffset = 0;
-     if (array instanceof ArrayBuffer) {
-       buffer = array;
-       bufferLength = array.byteLength;
-     } else if (array instanceof DataView) {
-       buffer = array.buffer;
-       bufferOffset += array.byteOffset;
-       bufferLength = array.byteOffset + array.byteLength;
-     } else {
-       throw new TypeError('Expected ArrayBuffer or DataView');
+     var octets = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+     var codec = getEncoding(encoding);
+     var stream = octetStream(octets);
+
+     if (stream.match([0xFF, 0xFE])) {
+       codec = getEncoding('utf-16');
+       stream.offset(2);
+     } else if (stream.match([0xFE, 0XFF])) {
+       codec = getEncoding('utf-16be');
+       stream.offset(2);
+     } else if (stream.match([0xEF, 0xBB, 0xBF])) {
+       codec = getEncoding('utf-8');
+       stream.offset(3);
      }
 
-     byteOffset = (arguments.length >= 2) ? toUint32(byteOffset) : 0;
-     byteOffset += bufferOffset;
-     if (byteOffset > bufferLength) {
-       throw new RangeError('byteOffset past end of buffer');
-     }
-     byteLength = (arguments.length >= 3) ? toInt32(byteLength) :
-       bufferLength - bufferOffset;
-     if (byteOffset + byteLength > bufferLength) {
-       throw new RangeError('byteLength past end of buffer');
-     }
-     encoding = (arguments.length >= 4) ? String(encoding) : DEFAULT_ENCODING;
-
-     var octets = new Uint8Array(buffer, byteOffset, byteLength);
-     var codec = codecs[encoding.toUpperCase()];
-     if (codec === (void 0)) {
-       throw new Error('Unsupported encoding');
-     }
-
-     return codec.decode(octetStream(octets), DecodeOperation.DECODE);
+     return codec.decode(stream, DecodeOperation.DECODE);
    }
 
-   function stringLength(array,
-                         byteOffset,
-                         byteLength,
-                         encoding) {
+   function stringLength(view, encoding) {
+     //if (!(view instanceof ArrayBufferView)) {
+     //  throw new TypeError('Expected ArrayBufferView');
+     //}
+     encoding = (arguments.length >= 2) ? String(encoding) : DEFAULT_ENCODING;
 
-     var buffer, bufferLength, bufferOffset = 0;
-     if (array instanceof ArrayBuffer) {
-       buffer = array;
-       bufferLength = array.byteLength;
-     } else if (array instanceof DataView) {
-       buffer = array.buffer;
-       bufferOffset += array.byteOffset;
-       bufferLength = array.byteOffset + array.byteLength;
-     } else {
-       throw new TypeError('Expected ArrayBuffer or DataView');
+     var octets = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+     var codec = getEncoding(encoding);
+     var stream = octetStream(octets);
+
+     if (stream.match([0xFF, 0xFE])) {
+       codec = getEncoding('utf-16');
+       stream.offset(2);
+     } else if (stream.match([0xFE, 0XFF])) {
+       codec = getEncoding('utf-16be');
+       stream.offset(2);
+     } else if (stream.match([0xEF, 0xBB, 0xBF])) {
+       codec = getEncoding('utf-8');
+       stream.offset(3);
      }
 
-     byteOffset = (arguments.length >= 2) ? toUint32(byteOffset) : 0;
-     byteOffset += bufferOffset;
-     if (byteOffset > bufferLength) {
-       throw new RangeError('byteOffset past end of buffer');
-     }
-     byteLength = (arguments.length >= 3) ? toInt32(byteLength) :
-       bufferLength - bufferOffset;
-     if (byteOffset + byteLength > bufferLength) {
-       throw new RangeError('byteLength past end of buffer');
-     }
-     encoding = (arguments.length >= 4) ? String(encoding) : DEFAULT_ENCODING;
-
-     var octets = new Uint8Array(buffer, byteOffset, byteLength);
-
-     var codec = codecs[encoding.toUpperCase()];
-     if (codec === (void 0)) {
-       throw new Error('Unsupported encoding');
-     }
-
-     return codec.decode(octetStream(octets), DecodeOperation.LENGTH);
+     return codec.decode(stream, DecodeOperation.LENGTH);
    }
 
    function encode(value,
-                   array,
-                   byteOffset,
+                   view,
                    encoding) {
 
      value = String(value);
-     byteOffset = arguments.length >= 3 ? toInt32(byteOffset) : 0;
-     encoding = arguments.length >= 4 ? String(encoding) : DEFAULT_ENCODING;
+     encoding = arguments.length >= 3 ? String(encoding) : DEFAULT_ENCODING;
 
-     var buffer, bufferLength;
-     if (array instanceof ArrayBuffer) {
-       buffer = array;
-       bufferLength = array.byteLength;
-     } else if (array instanceof DataView) {
-       buffer = array.buffer;
-       byteOffset += array.byteOffset;
-       bufferLength = array.byteOffset + array.byteLength;
-     } else {
-       throw new TypeError('Expected ArrayBuffer or DataView');
-     }
-
-     var codec = codecs[encoding.toUpperCase()];
-     if (codec === (void 0)) {
-       throw new Error('Unsupported encoding');
-     }
+     var codec = getEncoding(encoding);
 
      var octets = [];
      var stream = octetStream(octets, true);
      codec.encode(stream, value);
 
-     if ((byteOffset + octets.length) > bufferLength) {
+     if (octets.length > view.byteLength) {
        throw new RangeError("Writing past the end of the buffer");
      }
 
-     (new Uint8Array(buffer, byteOffset, octets.length)).set(octets);
+     (new Uint8Array(view.buffer, view.byteOffset, octets.length)).set(octets);
 
      return octets.length;
    }
@@ -428,10 +373,7 @@
      value = String(value);
      encoding = arguments.length >= 2 ? String(encoding) : DEFAULT_ENCODING;
 
-     var codec = codecs[encoding.toUpperCase()];
-     if (codec === (void 0)) {
-       throw new Error('Unsupported encoding');
-     }
+     var codec = getEncoding(encoding);
 
      var octets = [];
      var stream = octetStream(octets, true);
