@@ -46,16 +46,11 @@
      };
    }
 
-   var DecodeOperation = {
-     DECODE: 0,
-     LENGTH: 1
-   };
-
    var codecs = [
      {
        name: 'binary',
        labels: ['binary'],
-       encode: function(stream, string) {
+       encode: function(stream, string, options) {
          var i, octet;
          for (i = 0; i < string.length; i += 1) {
            octet = string.charCodeAt(i);
@@ -65,12 +60,12 @@
            stream.write(octet);
          }
        },
-       decode: function(stream, operation) {
+       decode: function(stream, options) {
          var string, codepoint, lpos;
          while (!stream.eos()) {
            lpos = stream.pos();
            codepoint = stream.read();
-           if (operation === DecodeOperation.LENGTH && codepoint === 0) {
+           if (options.operation === "length" && codepoint === 0) {
              return lpos;
            }
            string += String.fromCharCode(codepoint);
@@ -82,7 +77,7 @@
      {
        name: 'utf-8',
        labels: ['utf-8'],
-       encode: function(stream, string) {
+       encode: function(stream, string, options) {
          var i, codepoint, codepoint2;
 
          for (i = 0; i < string.length; i += 1) {
@@ -125,7 +120,7 @@
          }
        },
 
-       decode: function(stream, operation) {
+       decode: function(stream, options) {
          var string = '', codepoint, lpos;
 
          // continuation byte
@@ -158,7 +153,7 @@
              throw new RangeError('Invalid UTF-8 sequence');
            }
 
-           if (operation === DecodeOperation.LENGTH && codepoint === 0) {
+           if (options.operation === "length" && codepoint === 0) {
              return lpos;
            } else if (codepoint < 0x10000) {
              string += String.fromCharCode(codepoint);
@@ -176,7 +171,7 @@
      {
        name: 'utf-16le',
        labels: ['utf-16le', 'utf-16'],
-       encode: function(stream, string) {
+       encode: function(stream, string, options) {
          var i, codepoint;
          for (i = 0; i < string.length; i += 1) {
            codepoint = string.charCodeAt(i);
@@ -184,13 +179,13 @@
            stream.write((codepoint >> 8) & 0xff);
          }
        },
-       decode: function(stream, operation) {
+       decode: function(stream, options) {
          var string = '', codepoint, lpos;
 
          while (!stream.eos()) {
            lpos = stream.pos();
            codepoint = stream.read() | (stream.read() << 8);
-           if (operation === DecodeOperation.LENGTH && codepoint === 0) {
+           if (options.operation === "length" && codepoint === 0) {
              return lpos;
            }
            string += String.fromCharCode(codepoint);
@@ -202,7 +197,7 @@
      {
        name: 'utf-16be',
        labels: ['utf-16be'],
-       encode: function(stream, string) {
+       encode: function(stream, string, options) {
          var i, codepoint;
          for (i = 0; i < string.length; i += 1) {
            codepoint = string.charCodeAt(i);
@@ -210,13 +205,13 @@
            stream.write(codepoint & 0xff);
          }
        },
-       decode: function(stream, operation) {
+       decode: function(stream, options) {
          var string = '', codepoint, lpos;
 
          while (!stream.eos()) {
            lpos = stream.pos();
            codepoint = (stream.read() << 8) | stream.read();
-           if (operation === DecodeOperation.LENGTH && codepoint === 0) {
+           if (options.operation === "length" && codepoint === 0) {
              return lpos;
            }
            string += String.fromCharCode(codepoint);
@@ -400,7 +395,7 @@
    ];
 
    var singleByteEncoding = {
-     encode: function(stream, string) {
+     encode: function(stream, string, options) {
        var i, code_point, index;
        for (i = 0; i < string.length; i += 1) {
          code_point = string.charCodeAt(i);
@@ -415,12 +410,12 @@
          }
        }
      },
-     decode: function(stream, operation) {
+     decode: function(stream, options) {
        var string = '', octet, code_point, lpos;
        while (!stream.eos()) {
          lpos = stream.pos();
          octet = stream.read();
-         if (operation === DecodeOperation.LENGTH && octet === 0) {
+         if (options.operation === "length" && octet === 0) {
            return lpos;
          }
          if (octet <= 0x7f) {
@@ -485,7 +480,7 @@
        stream.offset(3);
      }
 
-     return codec.decode(stream, DecodeOperation.DECODE);
+     return codec.decode(stream, {operation: "decode"});
    }
 
    function stringLength(view, encoding) {
@@ -509,7 +504,7 @@
        stream.offset(3);
      }
 
-     return codec.decode(stream, DecodeOperation.LENGTH);
+     return codec.decode(stream, {operation: "length"});
    }
 
    function encode(value,
@@ -523,7 +518,7 @@
 
      var octets = [];
      var stream = octetStream(octets, true);
-     codec.encode(stream, value);
+     codec.encode(stream, value, {});
 
      if (octets.length > view.byteLength) {
        throw new RangeError("Writing past the end of the buffer");
@@ -544,7 +539,7 @@
 
      var octets = [];
      var stream = octetStream(octets, true);
-     codec.encode(stream, value);
+     codec.encode(stream, value, {});
      return octets.length;
    }
 
