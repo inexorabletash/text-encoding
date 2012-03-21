@@ -4,7 +4,7 @@
    // TODO: Interpret DOMString as UTF-16 sequence per WebIDL
    // TODO: Support replacement characters / fatal flag
 
-   function byteStream(bytes, unbounded) {
+   function ByteStream(bytes, unbounded) {
      var pos = 0;
      return {
        read: function() {
@@ -46,6 +46,61 @@
      };
    }
 
+   function StringReader(string) {
+     var i = 0, n = string.length;
+     return {
+       eof: function () {
+         return i >= n;
+       },
+       read: function () {
+         if (i >= n) {
+           throw new RangeError('Reading past the end of the string');
+         }
+         var c = string.charCodeAt(i), d, a, b;
+         if (c < 0xD800 || c > 0xDFFF) {
+           i += 1;
+           return c;
+         } else if (0xDC00 <= c && c <= 0xDFFF) {
+           i += 1;
+           return fallback_code_point;
+         } else { // (c <= 0xD800 && c <= 0xDBFF)
+           if (i === n - 1) {
+             i += 1;
+             return fallback_code_point;
+           }
+           d = string.charCodeAt(i + 1);
+           if (0xDC00 <= d && d <= 0xDFFF) {
+             a = c & 0x3FF;
+             b = d & 0x3FF;
+             i += 2;
+             return 0x10000 + (a << 10) + b;
+           } else {
+             i += 1;
+             return fallback_code_point;
+           }
+         }
+       }
+     };
+   }
+
+   function StringWriter() {
+     var string = '';
+     return {
+       string: function () {
+         return string;
+       },
+       emit: function(c) {
+         if (c <= 0xFFFF) {
+           string += String.fromCharCode(c);
+         } else {
+           c -= 0x10000;
+           string += String.fromCharCode(0XD800 + ((c >> 10) & 0x3ff));
+           string += String.fromCharCode(0XDC00 + (c & 0x3ff));
+         }
+       }
+     };
+   }
+
    var fallback_code_point = 0xFFFD;
 
    var codecs = [
@@ -80,27 +135,10 @@
        name: 'utf-8',
        labels: ['utf-8'],
        encode: function(stream, string, options) {
-         var i, codepoint, codepoint2;
+         var i, codepoint, codepoint2, reader = StringReader(string);
 
-         for (i = 0; i < string.length; i += 1) {
-           codepoint = string.charCodeAt(i);
-
-           if ((codepoint & 0xfc00) === 0xd800) {
-             i += 1;
-             if (i >= string.length) {
-               throw new RangeError('Invalid UTF-16 sequence');
-             }
-
-             codepoint2 = string.charCodeAt(i);
-             if ((codepoint2 & 0xfc00) === 0xdc00) {
-               codepoint = ((codepoint & 0x03ff) << 10 |
-                            (codepoint2 & 0x03ff)) + 0x10000;
-             } else {
-               throw new RangeError('Invalid UTF-16 sequence');
-             }
-           } else if ((codepoint & 0xfc00) === 0xdc00) {
-             throw new RangeError('Invalid UTF-16 sequence');
-           }
+         while (!reader.eof()) {
+           codepoint = reader.read();
 
            if (codepoint <= 0x00007f) {
              stream.write(codepoint);
@@ -123,7 +161,7 @@
        },
 
        decode: function(stream, options) {
-         var string = '', codepoint, lpos;
+         var writer = StringWriter(), codepoint, lpos;
 
          // continuation byte
          function cbyte() {
@@ -157,16 +195,12 @@
 
            if (options.operation === "length" && codepoint === 0) {
              return lpos;
-           } else if (codepoint < 0x10000) {
-             string += String.fromCharCode(codepoint);
-           } else {
-             codepoint -= 0x10000;
-             string += String.fromCharCode(0xd800 + ((codepoint >> 10) & 0x3ff));
-             string += String.fromCharCode(0xdc00 + (codepoint & 0x3ff));
            }
+
+           writer.emit(codepoint);
          }
 
-         return string;
+         return writer.string();
        }
      },
 
@@ -398,9 +432,9 @@
 
    var singleByteEncoding = {
      encode: function(stream, string, options) {
-       var i, code_point, index;
-       for (i = 0; i < string.length; i += 1) {
-         code_point = string.charCodeAt(i);
+       var i, code_point, index, reader = StringReader(string);
+       while (!reader.eof()) {
+         code_point = reader.read();
          if (code_point <= 0x7f) {
            stream.write(code_point);
          } else {
@@ -413,7 +447,7 @@
        }
      },
      decode: function(stream, options) {
-       var string = '', b, code_point, lpos;
+       var writer = StringWriter(), b, code_point, lpos;
        while (!stream.eof()) {
          lpos = stream.pos();
          b = stream.read();
@@ -421,20 +455,20 @@
            return lpos;
          }
          if (b <= 0x7f) {
-           string += String.fromCharCode(b);
+           writer.emit(b);
          } else {
            code_point = this.encoding[b - 128];
            if (code_point === null) {
              if (options.fatal) {
                throw new RangeError('Invalid value in stream');
              }
-             string += String.fromCharCode(fallback_code_point);
+             writer.emit(fallback_code_point);
            } else {
-             string += String.fromCharCode(code_point);
+             writer.emit(code_point);
            }
          }
        }
-       return string;
+       return writer.string();
      }
    };
 
@@ -473,7 +507,7 @@
 
      var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
      var codec = getEncoding(encoding);
-     var stream = byteStream(bytes);
+     var stream = ByteStream(bytes);
 
      if (stream.match([0xFF, 0xFE])) {
        codec = getEncoding('utf-16');
@@ -497,7 +531,7 @@
 
      var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
      var codec = getEncoding(encoding);
-     var stream = byteStream(bytes);
+     var stream = ByteStream(bytes);
 
      if (stream.match([0xFF, 0xFE])) {
        codec = getEncoding('utf-16');
@@ -523,7 +557,7 @@
      var codec = getEncoding(encoding);
 
      var bytes = [];
-     var stream = byteStream(bytes, true);
+     var stream = ByteStream(bytes, true);
      codec.encode(stream, value, {});
 
      if (bytes.length > view.byteLength) {
@@ -544,7 +578,7 @@
      var codec = getEncoding(encoding);
 
      var bytes = [];
-     var stream = byteStream(bytes, true);
+     var stream = ByteStream(bytes, true);
      codec.encode(stream, value, {});
      return bytes.length;
    }

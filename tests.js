@@ -132,19 +132,20 @@ test(
     expect(5);
 
     var badStrings = [
-      '\ud800', // Surrogate half
-      '\udc00', // Surrogate half
-      'abc\ud800def', // Surrogate half
-      'abc\udc00def', // Surrogate half
-      '\udc00\ud800', // Wrong order
+      { input: '\ud800', expected: '\ufffd' }, // Surrogate half
+      { input: '\udc00', expected: '\ufffd' }, // Surrogate half
+      { input: 'abc\ud800def', expected: 'abc\ufffddef' }, // Surrogate half
+      { input: 'abc\udc00def', expected: 'abc\ufffddef' }, // Surrogate half
+      { input: '\udc00\ud800', expected: '\ufffd\ufffd' } // Wrong order
     ];
 
     badStrings.forEach(
-      function(str) {
-        raises(
-          function() {
-            stringEncoding.encodedLength(str, 'UTF-8');
-          });
+      function(t) {
+        var length = stringEncoding.encodedLength(t.input, 'utf-8');
+        var array = new Uint8Array(length);
+        var encoded = stringEncoding.encode(t.input, array, 'utf-8');
+        var decoded = stringEncoding.decode(array, 'utf-8');
+        equal(t.expected, decoded);
       });
   });
 
