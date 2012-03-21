@@ -46,6 +46,8 @@
      };
    }
 
+   var fallback_code_point = 0xFFFD;
+
    var codecs = [
      {
        name: 'binary',
@@ -423,9 +425,13 @@
          } else {
            code_point = this.encoding[octet - 128];
            if (code_point === null) {
-             throw new RangeError('Invalid octet in stream');
+             if (options.fatal) {
+               throw new RangeError('Invalid octet in stream');
+             }
+             string += String.fromCharCode(fallback_code_point);
+           } else {
+             string += String.fromCharCode(code_point);
            }
-           string += String.fromCharCode(code_point);
          }
        }
        return string;
@@ -480,7 +486,7 @@
        stream.offset(3);
      }
 
-     return codec.decode(stream, {operation: "decode"});
+     return codec.decode(stream, {operation: "decode", fatal: false});
    }
 
    function stringLength(view, encoding) {
@@ -504,7 +510,7 @@
        stream.offset(3);
      }
 
-     return codec.decode(stream, {operation: "length"});
+     return codec.decode(stream, {operation: "length", fatal: false});
    }
 
    function encode(value,
