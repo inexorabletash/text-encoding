@@ -17,9 +17,10 @@ function encodeArrayOfStrings(strings) {
   view.setUint32(offset, strings.length);
   offset += Uint32Array.BYTES_PER_ELEMENT;
   for (i = 0; i < strings.length; i += 1) {
-    len = stringEncoding.encode(strings[i], view,
-                                offset + Uint32Array.BYTES_PER_ELEMENT,
-                                "UTF-8");
+    len = stringEncoding.encode(
+      strings[i],
+      new DataView(view.buffer, offset + Uint32Array.BYTES_PER_ELEMENT),
+      "UTF-8");
     view.setUint32(offset, len);
     offset += Uint32Array.BYTES_PER_ELEMENT + len;
   }
@@ -38,8 +39,9 @@ function decodeArrayOfStrings(buffer) {
   for (i = 0; i < num_strings; i += 1) {
     len = view.getUint32(offset);
     offset += Uint32Array.BYTES_PER_ELEMENT;
-    strings[i] = stringEncoding.decode(view, offset, len,
-                                       "UTF-8");
+    strings[i] = stringEncoding.decode(
+      new DataView(view.buffer, offset, len),
+      "UTF-8");
     offset += len;
   }
   return strings;
