@@ -58,7 +58,7 @@ test(
       actual = new Uint8Array(stringEncoding.encodedLength(str, 'UTF-8'));
       stringEncoding.encode(str, actual, 'UTF-8');
 
-      arrayEqual(expected, actual, 'expected equal encodings');
+      arrayEqual(actual, expected, 'expected equal encodings');
     }
   });
 
@@ -90,7 +90,7 @@ test(
       expected = decode_utf8(encoded);
       actual = stringEncoding.decode(new Uint8Array(encoded), 'UTF-8');
 
-      equal(expected, actual, 'expected equal decodings');
+      equal(actual, expected, 'expected equal decodings');
     }
   });
 
@@ -130,14 +130,14 @@ test(
     function check(string, encoding, expected) {
 
       var len = stringEncoding.encodedLength(string, encoding);
-      equal(expected.length, len, 'encoded length mismatch ' + encoding);
+      equal(len, expected.length, 'encoded length mismatch ' + encoding);
 
       var array = new Uint8Array(len);
       stringEncoding.encode(string, array, encoding);
-      arrayEqual(expected, array, 'expected equal encodings ' + encoding);
+      arrayEqual(array, expected, 'expected equal encodings ' + encoding);
 
       var decoded = stringEncoding.decode(new Uint8Array(expected), encoding);
-      equal(string, decoded, 'expected equal decodings ' + encoding);
+      equal(decoded, string, 'expected equal decodings ' + encoding);
     }
 
     check(string, 'UTF-8', expected_utf8);
@@ -202,17 +202,17 @@ test(
     var string = "z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD"; // z, cent, CJK water, G-Clef, Private-use character
 
     // Basic cases
-    equal(string, stringEncoding.decode(new Uint8Array(utf8), 'utf-8'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf16le), 'utf-16le'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf16be), 'utf-16be'));
+    equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-8'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-16le'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-16be'), string);
 
     // Verify that BOM wins
-    equal(string, stringEncoding.decode(new Uint8Array(utf8), 'utf-16le'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf8), 'utf-16be'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf16le), 'utf-8'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf16le), 'utf-16be'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf16be), 'utf-8'));
-    equal(string, stringEncoding.decode(new Uint8Array(utf16be), 'utf-16le'));
+    equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-16le'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-16be'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-8'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-16be'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-8'), string);
+    equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-16le'), string);
   });
 
 test(
@@ -241,6 +241,6 @@ test(
         var found_len = stringEncoding.stringLength(array, test.encoding);
         var decoded = stringEncoding.decode(new DataView(array.buffer, 0, found_len), test.encoding);
 
-        equal(test.string, decoded);
+        equal(decoded, test.string);
       });
   });
