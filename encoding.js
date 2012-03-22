@@ -46,7 +46,7 @@
     };
   }
 
-  function StringReader(string) {
+  function CodePointInputStream(string) {
     var i = 0, n = string.length;
     return {
       eof: function () {
@@ -84,7 +84,7 @@
     };
   }
 
-  function StringWriter() {
+  function CodePointOutputStream() {
     var string = '';
     return {
       string: function () {
@@ -108,44 +108,40 @@
     {
       name: 'binary',
       labels: ['binary'],
-      encode: function(stream, string, options) {
-        var reader = StringReader(string);
-        while (!reader.eof()) {
-          var code_point = reader.read();
+      encode: function(output_byte_stream, input_code_point_stream, options) {
+        while (!input_code_point_stream.eof()) {
+          var code_point = input_code_point_stream.read();
           if (code_point > 0xff) {
             throw new Error('Can not encode code point ' + code_point);
           }
-          stream.write(code_point);
+          output_byte_stream.write(code_point);
         }
       },
-      decode: function(stream, options) {
-        var writer = StringWriter();
-        while (!stream.eof()) {
-          var bite = stream.read();
+      decode: function(input_byte_stream, output_code_point_stream, options) {
+        while (!input_byte_stream.eof()) {
+          var bite = input_byte_stream.read();
           if (options.operation === "length" && code_point === 0) {
             return stream.pos() - 1;
           }
-          writer.emit(bite);
+          output_code_point_stream.emit(bite);
         }
-        return writer.String();
+        return (void 0);
       }
     },
 
     {
       name: 'utf-8',
       labels: ['utf-8'],
-      encode: function(stream, string, options) {
-        var reader = StringReader(string);
-
-        while (!reader.eof()) {
-          var code_point = reader.read();
+      encode: function(output_byte_stream, input_code_point_stream, options) {
+        while (!input_code_point_stream.eof()) {
+          var code_point = input_code_point_stream.read();
 
           if (0xD800 <= code_point && code_point <= 0xDFFF) {
             throw new Error('Invalid code point');
           }
 
           if (0x0000 <= code_point && code_point <= 0x007f) {
-            stream.write(code_point);
+            output_byte_stream.write(code_point);
             continue;
           }
 
@@ -161,28 +157,27 @@
             offset = 0xF0;
           }
 
-          stream.write(Math.floor(code_point / Math.pow(64, count)) + offset);
+          output_byte_stream.write(Math.floor(code_point / Math.pow(64, count)) + offset);
           while (count > 0) {
             var temp = Math.floor(code_point / Math.pow(64, count - 1));
-            stream.write(0x80 + (temp % 64));
+            output_byte_stream.write(0x80 + (temp % 64));
             count -= 1;
           }
         }
       },
 
-      decode: function(stream, options) {
-        var writer = StringWriter(), utf8_code_point = 0,
-            utf8_bytes_needed = 0, utf8_bytes_seen = 0,
+      decode: function(input_byte_stream, output_code_point_stream, options) {
+        var utf8_code_point = 0, utf8_bytes_needed = 0, utf8_bytes_seen = 0,
             utf8_lower_boundary = 0;
 
-        while (!stream.eof()) {
-          var bite = stream.read();
+        while (!input_byte_stream.eof()) {
+          var bite = input_byte_stream.read();
           if (utf8_bytes_needed === 0) {
             if (0x00 <= bite && bite <= 0x7F) {
               if (bite === 0 && options.operation === "length") {
-                return stream.pos() - 1;
+                return input_byte_stream.pos() - 1;
               }
-              writer.emit(bite);
+              output_code_point_stream.emit(bite);
               continue;
             } else if (0xC0 <= bite && bite <= 0xDF) {
               utf8_bytes_needed = 1;
@@ -205,7 +200,7 @@
               utf8_lower_boundary = 0x4000000;
               utf8_code_point = bite - 0xFC;
             } else {
-              writer.emit(fallback_code_point);
+              output_code_point_stream.emit(fallback_code_point);
               continue;
             }
             utf8_code_point = utf8_code_point * Math.pow(64, utf8_bytes_needed);
@@ -219,8 +214,8 @@
             utf8_bytes_needed = 0;
             utf8_bytes_seen = 0;
             utf8_lower_boundary = 0;
-            stream.offset(-1);
-            writer.emit(fallback_code_point);
+            input_byte_stream.offset(-1);
+            output_code_point_stream.emit(fallback_code_point);
             continue;
           }
           utf8_bytes_seen += 1;
@@ -237,21 +232,21 @@
           if (code_point >= lower_boundary &&
               code_point <= 0x10FFFF &&
               (code_point < 0XD800 || code_point > 0xDFFF)) {
-            writer.emit(code_point);
+            output_code_point_stream.emit(code_point);
             continue;
           }
           if (options.fatal) {
             throw new Error("Invalid UTF-8 sequence");
           }
-          writer.emit(fallback_code_point);
+          output_code_point_stream.emit(fallback_code_point);
         }
         if (utf8_bytes_needed !== 0) {
           if (options.fatal) {
             throw new Error("Invalid UTF-8 sequence");
           }
-          writer.emit(fallback_code_point);
+          output_code_point_stream.emit(fallback_code_point);
         }
-        return writer.string();
+        return (void 0);
       }
     },
 
@@ -445,45 +440,43 @@
 
   // Generic Encoders/Decoders for single byte encodings, using maps
   function singleByteEncoder(map) {
-    return function (stream, string, options) {
-      var reader = StringReader(string);
-      while (!reader.eof()) {
-        var code_point = reader.read();
+    return function (output_byte_stream, input_code_point_stream, options) {
+      while (!input_code_point_stream.eof()) {
+        var code_point = input_code_point_stream.read();
         if (code_point <= 0x7f) {
-          stream.write(code_point);
+          output_byte_stream.write(code_point);
         } else {
           var index = map.indexOf(code_point);
           if (index === -1) {
             throw new Error('Can not encode code point ' + code_point);
           }
-          stream.write(index + 128);
+          output_byte_stream.write(index + 128);
         }
       }
     };
   }
   function singleByteDecoder(map) {
-    return function (stream, options) {
-      var writer = StringWriter();
-      while (!stream.eof()) {
-        var bite = stream.read();
+    return function (input_byte_stream, output_code_point_stream, options) {
+      while (!input_byte_stream.eof()) {
+        var bite = input_byte_stream.read();
         if (options.operation === "length" && bite === 0) {
-          return stream.pos() - 1;
+          return input_byte_stream.pos() - 1;
         }
         if (bite <= 0x7f) {
-          writer.emit(bite);
+          output_code_point_stream.emit(bite);
         } else {
           var code_point = map[bite - 128];
           if (code_point === null) {
             if (options.fatal) {
               throw new RangeError('Invalid value in stream');
             }
-            writer.emit(fallback_code_point);
+            output_code_point_stream.emit(fallback_code_point);
           } else {
-            writer.emit(code_point);
+            output_code_point_stream.emit(code_point);
           }
         }
       }
-      return writer.string();
+      return (void 0);
     };
   }
 
@@ -498,22 +491,21 @@
   }());
 
   function utf16Encoder(utf16_be) {
-    return function(stream, string, options) {
+    return function(output_byte_stream, input_code_point_stream, options) {
       function convert_to_bytes(code_unit) {
         var byte1 = code_unit >> 8;
         var byte2 = code_unit & 0xFF;
         if (utf16_be) {
-          stream.write(byte1);
-          stream.write(byte2);
+          output_byte_stream.write(byte1);
+          output_byte_stream.write(byte2);
         } else {
-          stream.write(byte2);
-          stream.write(byte1);
+          output_byte_stream.write(byte2);
+          output_byte_stream.write(byte1);
         }
       }
 
-      var reader = StringReader(string);
-      while (!reader.eof()) {
-        var code_point = reader.read();
+      while (!input_code_point_stream.eof()) {
+        var code_point = input_code_point_stream.read();
         if (0xD800 <= code_point && code_point <= 0xDFFF) {
           throw new RangeError('Invalid code point');
         }
@@ -530,13 +522,12 @@
   }
 
   function utf16Decoder(utf16_be) {
-    return function(stream, options) {
-      var writer = StringWriter(),
-          utf16_lead_byte = null, utf16_lead_surrogate = null;
+    return function(input_byte_stream, output_code_point_stream, options) {
+      var utf16_lead_byte = null, utf16_lead_surrogate = null;
 
-      while (!stream.eof()) {
+      while (!input_byte_stream.eof()) {
 
-        var bite = stream.read();
+        var bite = input_byte_stream.read();
         if (utf16_lead_byte === null) {
           utf16_lead_byte = bite;
           continue;
@@ -551,21 +542,21 @@
         utf16_lead_byte = null;
 
         if (options.operation === "length" && code_point === 0) {
-          return stream.pos() - 2;
+          return input_byte_stream.pos() - 2;
         }
 
         if (utf16_lead_surrogate !== null) {
           var lead_surrogate = utf16_lead_surrogate;
           utf16_lead_surrogate = null;
           if (0xDC00 <= code_point && code_point <= 0xDFFF) {
-            writer.emit(0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00));
+            output_code_point_stream.emit(0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00));
             continue;
           } else {
             if (options.fatal) {
               throw new Error("Invalid stream");
             }
-            stream.offset(-2);
-            writer.emit(fallback_code_point);
+            input_byte_stream.offset(-2);
+            output_code_point_stream.emit(fallback_code_point);
             continue;
           }
         }
@@ -577,21 +568,20 @@
           if (options.fatal) {
             throw new Error("Invalid stream");
           }
-          writer.emit(fallback_code_point);
+          output_code_point_stream.emit(fallback_code_point);
           continue;
         }
-        writer.emit(code_point);
+        output_code_point_stream.emit(code_point);
       }
       if (utf16_lead_byte || utf16_lead_surrogate) {
         if (options.fatal) {
           throw new Error("Invalid stream");
         }
-        writer.emit(fallback_code_point);
+        output_code_point_stream.emit(fallback_code_point);
       }
-      return writer.string();
+      return (void 0);
     };
   }
-
 
   function getEncoding(label) {
     label = String(label).trim().toLowerCase();
@@ -604,10 +594,22 @@
     throw new Error("Unknown encoding: " + label);
   }
 
-  var DEFAULT_ENCODING = 'utf-8';
+  function detectEncoding(label, input_stream) {
+    var codec = getEncoding(label);
+    if (input_stream.match([0xFF, 0xFE])) {
+      codec = getEncoding('utf-16');
+      input_stream.offset(2);
+    } else if (input_stream.match([0xFE, 0XFF])) {
+      codec = getEncoding('utf-16be');
+      input_stream.offset(2);
+    } else if (input_stream.match([0xEF, 0xBB, 0xBF])) {
+      codec = getEncoding('utf-8');
+      input_stream.offset(3);
+    }
+    return codec;
+  }
 
-  function toUint32(x) { return x >>> 0; }
-  function toInt32(x) { return x >> 0; }
+  var DEFAULT_ENCODING = 'utf-8';
 
   function decode(view,
                   encoding) {
@@ -617,21 +619,12 @@
     encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
 
     var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-    var codec = getEncoding(encoding);
-    var stream = ByteStream(bytes);
+    var input_stream = ByteStream(bytes);
+    var codec = detectEncoding(encoding, input_stream);
 
-    if (stream.match([0xFF, 0xFE])) {
-      codec = getEncoding('utf-16');
-      stream.offset(2);
-    } else if (stream.match([0xFE, 0XFF])) {
-      codec = getEncoding('utf-16be');
-      stream.offset(2);
-    } else if (stream.match([0xEF, 0xBB, 0xBF])) {
-      codec = getEncoding('utf-8');
-      stream.offset(3);
-    }
-
-    return codec.decode(stream, {operation: "decode", fatal: false});
+    var output_stream = CodePointOutputStream();
+    codec.decode(input_stream, output_stream, {operation: "decode", fatal: false});
+    return output_stream.string();
   }
 
   function stringLength(view,
@@ -642,21 +635,11 @@
     encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
 
     var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-    var codec = getEncoding(encoding);
-    var stream = ByteStream(bytes);
+    var input_stream = ByteStream(bytes);
+    var codec = detectEncoding(encoding, input_stream);
 
-    if (stream.match([0xFF, 0xFE])) {
-      codec = getEncoding('utf-16');
-      stream.offset(2);
-    } else if (stream.match([0xFE, 0XFF])) {
-      codec = getEncoding('utf-16be');
-      stream.offset(2);
-    } else if (stream.match([0xEF, 0xBB, 0xBF])) {
-      codec = getEncoding('utf-8');
-      stream.offset(3);
-    }
-
-    return codec.decode(stream, {operation: "length", fatal: false});
+    var output_stream = { emit: function () {} };
+    return codec.decode(input_stream, output_stream, {operation: "length", fatal: false});
   }
 
   function encode(value,
@@ -671,8 +654,9 @@
     var codec = getEncoding(encoding);
 
     var bytes = [];
-    var stream = ByteStream(bytes, true);
-    codec.encode(stream, value, {});
+    var output_stream = ByteStream(bytes, true);
+    var input_stream = CodePointInputStream(value);
+    codec.encode(output_stream, input_stream, {});
 
     if (bytes.length > view.byteLength) {
       throw new RangeError("Writing past the end of the buffer");
@@ -685,15 +669,15 @@
 
   function encodedLength(value,
                          encoding) {
-
     value = String(value);
     encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
 
     var codec = getEncoding(encoding);
 
     var bytes = [];
-    var stream = ByteStream(bytes, true);
-    codec.encode(stream, value, {});
+    var output_stream = ByteStream(bytes, true);
+    var input_stream = CodePointInputStream(value);
+    codec.encode(output_stream, input_stream, {});
     return bytes.length;
   }
 
