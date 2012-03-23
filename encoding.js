@@ -320,13 +320,13 @@
 
   function binaryDecoder() {
     return function(input_byte_stream, output_code_point_stream, options) {
+      if (options.operation === "length") {
+        throw new Error("Invalid operation for binary encoding");
+      }
       while (true) {
         var bite = input_byte_stream.read();
         if (bite === eof) {
           break;
-        }
-        if (options.operation === "length" && code_point === 0) {
-          return stream.pos() - 1;
         }
         output_code_point_stream.emit(bite);
       }

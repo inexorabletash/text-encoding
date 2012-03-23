@@ -255,7 +255,7 @@ test(
 test(
   "Null termination",
   function() {
-    expect(6);
+    expect(7);
 
     var encodings = [
       { encoding: 'UTF-8', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
@@ -280,4 +280,6 @@ test(
 
         equal(decoded, test.string);
       });
+
+    raises(function () { stringEncoding.stringLength(new Uint8Array([0]), 'binary'); });
   });
