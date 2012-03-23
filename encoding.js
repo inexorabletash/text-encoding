@@ -134,123 +134,8 @@
     {
       name: 'utf-8',
       labels: ['utf-8'],
-      encode: function(output_byte_stream, input_code_point_stream, options) {
-        while (true) {
-          var code_point = input_code_point_stream.read();
-          if (code_point === eof) {
-            break;
-          }
-          if (0xD800 <= code_point && code_point <= 0xDFFF) {
-            throw new Error('Invalid code point');
-          }
-          if (0x0000 <= code_point && code_point <= 0x007f) {
-            output_byte_stream.write(code_point);
-            continue;
-          }
-          var count, offset;
-          if (0x0080 <= code_point && code_point <= 0x07FF) {
-            count = 1;
-            offset = 0xC0;
-          } else if (0x0800 <= code_point && code_point <= 0xFFFF) {
-            count = 2;
-            offset = 0xE0;
-          } else if (0x10000 <= code_point && code_point <= 0x10FFFF) {
-            count = 3;
-            offset = 0xF0;
-          }
-          output_byte_stream.write(Math.floor(code_point / Math.pow(64, count)) + offset);
-          while (count > 0) {
-            var temp = Math.floor(code_point / Math.pow(64, count - 1));
-            output_byte_stream.write(0x80 + (temp % 64));
-            count -= 1;
-          }
-        }
-      },
-
-      decode: function(input_byte_stream, output_code_point_stream, options) {
-        var utf8_code_point = 0, utf8_bytes_needed = 0, utf8_bytes_seen = 0,
-            utf8_lower_boundary = 0;
-        while (true) {
-          var bite = input_byte_stream.read();
-          if (bite === eof) {
-            if (utf8_bytes_needed !== 0) {
-              if (options.fatal) {
-                throw new Error("Invalid UTF-8 sequence");
-              }
-              output_code_point_stream.emit(fallback_code_point);
-            }
-            break;
-          }
-          if (utf8_bytes_needed === 0) {
-            if (0x00 <= bite && bite <= 0x7F) {
-              if (bite === 0 && options.operation === "length") {
-                return input_byte_stream.pos() - 1;
-              }
-              output_code_point_stream.emit(bite);
-              continue;
-            } else if (0xC0 <= bite && bite <= 0xDF) {
-              utf8_bytes_needed = 1;
-              utf8_lower_boundary = 0x80;
-              utf8_code_point = bite - 0xC0;
-            } else if (0xE0 <= bite && bite <= 0xEF) {
-              utf8_bytes_needed = 2;
-              utf8_lower_boundary = 0x800;
-              utf8_code_point = bite - 0xE0;
-            } else if (0xF0 <= bite && bite <= 0xF7) {
-              utf8_bytes_needed = 3;
-              utf8_lower_boundary = 0x10000;
-              utf8_code_point = bite - 0xF0;
-            } else if (0xF8 <= bite && bite <= 0xFB) {
-              utf8_bytes_needed = 4;
-              utf8_lower_boundary = 0x200000;
-              utf8_code_point = bite - 0xF8;
-            } else if (0xFC <= bite && bite <= 0xFD) {
-              utf8_bytes_needed = 5;
-              utf8_lower_boundary = 0x4000000;
-              utf8_code_point = bite - 0xFC;
-            } else {
-              output_code_point_stream.emit(fallback_code_point);
-              continue;
-            }
-            utf8_code_point = utf8_code_point * Math.pow(64, utf8_bytes_needed);
-            continue;
-          }
-          if (bite < 0x80 || bite > 0xBF) {
-            if (options.fatal) {
-              throw new Error("Invalid UTF-8 sequence");
-            }
-            utf8_code_point = 0;
-            utf8_bytes_needed = 0;
-            utf8_bytes_seen = 0;
-            utf8_lower_boundary = 0;
-            input_byte_stream.offset(-1);
-            output_code_point_stream.emit(fallback_code_point);
-            continue;
-          }
-          utf8_bytes_seen += 1;
-          utf8_code_point = utf8_code_point + (bite - 0x80) * Math.pow(64, utf8_bytes_needed - utf8_bytes_seen);
-          if (utf8_bytes_seen !== utf8_bytes_needed) {
-            continue;
-          }
-          var code_point = utf8_code_point;
-          var lower_boundary = utf8_lower_boundary;
-          utf8_code_point = 0;
-          utf8_bytes_needed = 0;
-          utf8_bytes_seen = 0;
-          utf8_lower_boundary = 0;
-          if (code_point >= lower_boundary &&
-              code_point <= 0x10FFFF &&
-              (code_point < 0XD800 || code_point > 0xDFFF)) {
-            output_code_point_stream.emit(code_point);
-            continue;
-          }
-          if (options.fatal) {
-            throw new Error("Invalid UTF-8 sequence");
-          }
-          output_code_point_stream.emit(fallback_code_point);
-        }
-        return (void 0);
-      }
+      encode: utf8Encoder(),
+      decode: utf8Decoder()
     },
 
     {
@@ -440,6 +325,128 @@
       "encoding":[1040,1041,1042,1043,1044,1045,1046,1047,1048,1049,1050,1051,1052,1053,1054,1055,1056,1057,1058,1059,1060,1061,1062,1063,1064,1065,1066,1067,1068,1069,1070,1071,8224,176,1168,163,167,8226,182,1030,174,169,8482,1026,1106,8800,1027,1107,8734,177,8804,8805,1110,181,1169,1032,1028,1108,1031,1111,1033,1113,1034,1114,1112,1029,172,8730,402,8776,8710,171,187,8230,160,1035,1115,1036,1116,1109,8211,8212,8220,8221,8216,8217,247,8222,1038,1118,1039,1119,8470,1025,1105,1103,1072,1073,1074,1075,1076,1077,1078,1079,1080,1081,1082,1083,1084,1085,1086,1087,1088,1089,1090,1091,1092,1093,1094,1095,1096,1097,1098,1099,1100,1101,1102,8364]
     }
   ];
+
+  function utf8Encoder() {
+    return function (output_byte_stream, input_code_point_stream, options) {
+      while (true) {
+        var code_point = input_code_point_stream.read();
+        if (code_point === eof) {
+          break;
+        }
+        if (0xD800 <= code_point && code_point <= 0xDFFF) {
+          throw new Error('Invalid code point');
+        }
+        if (0x0000 <= code_point && code_point <= 0x007f) {
+          output_byte_stream.write(code_point);
+          continue;
+        }
+        var count, offset;
+        if (0x0080 <= code_point && code_point <= 0x07FF) {
+          count = 1;
+          offset = 0xC0;
+        } else if (0x0800 <= code_point && code_point <= 0xFFFF) {
+          count = 2;
+          offset = 0xE0;
+        } else if (0x10000 <= code_point && code_point <= 0x10FFFF) {
+          count = 3;
+          offset = 0xF0;
+        }
+        output_byte_stream.write(Math.floor(code_point / Math.pow(64, count)) + offset);
+        while (count > 0) {
+          var temp = Math.floor(code_point / Math.pow(64, count - 1));
+          output_byte_stream.write(0x80 + (temp % 64));
+          count -= 1;
+        }
+      }
+    };
+  }
+
+  function utf8Decoder() {
+    return function (input_byte_stream, output_code_point_stream, options) {
+      var utf8_code_point = 0, utf8_bytes_needed = 0, utf8_bytes_seen = 0,
+          utf8_lower_boundary = 0;
+      while (true) {
+        var bite = input_byte_stream.read();
+        if (bite === eof) {
+          if (utf8_bytes_needed !== 0) {
+            if (options.fatal) {
+              throw new Error("Invalid UTF-8 sequence");
+            }
+            output_code_point_stream.emit(fallback_code_point);
+          }
+          break;
+        }
+        if (utf8_bytes_needed === 0) {
+          if (0x00 <= bite && bite <= 0x7F) {
+            if (bite === 0 && options.operation === "length") {
+              return input_byte_stream.pos() - 1;
+            }
+            output_code_point_stream.emit(bite);
+            continue;
+          } else if (0xC0 <= bite && bite <= 0xDF) {
+            utf8_bytes_needed = 1;
+            utf8_lower_boundary = 0x80;
+            utf8_code_point = bite - 0xC0;
+          } else if (0xE0 <= bite && bite <= 0xEF) {
+            utf8_bytes_needed = 2;
+            utf8_lower_boundary = 0x800;
+            utf8_code_point = bite - 0xE0;
+          } else if (0xF0 <= bite && bite <= 0xF7) {
+            utf8_bytes_needed = 3;
+            utf8_lower_boundary = 0x10000;
+            utf8_code_point = bite - 0xF0;
+          } else if (0xF8 <= bite && bite <= 0xFB) {
+            utf8_bytes_needed = 4;
+            utf8_lower_boundary = 0x200000;
+            utf8_code_point = bite - 0xF8;
+          } else if (0xFC <= bite && bite <= 0xFD) {
+            utf8_bytes_needed = 5;
+            utf8_lower_boundary = 0x4000000;
+            utf8_code_point = bite - 0xFC;
+          } else {
+            output_code_point_stream.emit(fallback_code_point);
+            continue;
+          }
+          utf8_code_point = utf8_code_point * Math.pow(64, utf8_bytes_needed);
+          continue;
+        }
+        if (bite < 0x80 || bite > 0xBF) {
+          if (options.fatal) {
+            throw new Error("Invalid UTF-8 sequence");
+          }
+          utf8_code_point = 0;
+          utf8_bytes_needed = 0;
+          utf8_bytes_seen = 0;
+          utf8_lower_boundary = 0;
+          input_byte_stream.offset(-1);
+          output_code_point_stream.emit(fallback_code_point);
+          continue;
+        }
+        utf8_bytes_seen += 1;
+        utf8_code_point = utf8_code_point + (bite - 0x80) * Math.pow(64, utf8_bytes_needed - utf8_bytes_seen);
+        if (utf8_bytes_seen !== utf8_bytes_needed) {
+          continue;
+        }
+        var code_point = utf8_code_point;
+        var lower_boundary = utf8_lower_boundary;
+        utf8_code_point = 0;
+        utf8_bytes_needed = 0;
+        utf8_bytes_seen = 0;
+        utf8_lower_boundary = 0;
+        if (code_point >= lower_boundary &&
+            code_point <= 0x10FFFF &&
+            (code_point < 0XD800 || code_point > 0xDFFF)) {
+          output_code_point_stream.emit(code_point);
+          continue;
+        }
+        if (options.fatal) {
+          throw new Error("Invalid UTF-8 sequence");
+        }
+        output_code_point_stream.emit(fallback_code_point);
+      }
+      return (void 0);
+    };
+  }
 
   // Generic Encoders/Decoders for single byte encodings, using maps
   function singleByteEncoder(map) {
