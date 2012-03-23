@@ -11,6 +11,48 @@ function arrayEqual(a, b, msg) {
 }
 
 
+function testEncodeDecode(encoding, max) {
+  function cpname(n) {
+    return 'U+' + ((n <= 0xFFFF) ?
+                   ('0000' + n.toString(16)).slice(-4) :
+                   n.toString(16));
+  }
+
+  test(
+    encoding + " - Encode/Decode",
+    function() {
+      var string, i, j, BATCH_SIZE = 0x1000;
+      for (i = 0; i < max; i += BATCH_SIZE) {
+        string = '';
+        for (j = i; j < i + BATCH_SIZE && j < max; j += 1) {
+          if (0xd800 <= j && j <= 0xdfff) {
+            // surrogate half
+            continue;
+          } else if (j > 0xffff) {
+            // outside BMP - encode as surrogate pair
+            string += String.fromCharCode(
+	      0xd800 + ((j >> 10) & 0x3ff),
+	      0xdc00 + (j & 0x3ff));
+          } else {
+            string += String.fromCharCode(i);
+          }
+        }
+        var len = stringEncoding.encodedLength(string, encoding);
+        var array = new Uint8Array(len);
+        var encoded = stringEncoding.encode(string, array, encoding);
+        var decoded = stringEncoding.decode(array, encoding);
+        equal(string, decoded, 'Round trip ' + cpname(i) + " - " + cpname(j));
+      }
+    });
+}
+
+testEncodeDecode('UTF-8', 0x10FFFF);
+testEncodeDecode('UTF-16LE', 0x10FFFF);
+testEncodeDecode('UTF-16BE', 0x10FFFF);
+testEncodeDecode('binary', 0xFF);
+testEncodeDecode('windows-1252', 0xFF);
+
+
 // Inspired by:
 // http://ecmanaut.blogspot.com/2006/07/encoding-decoding-utf8-in-javascript.html
 function encode_utf8(string) {
@@ -34,9 +76,9 @@ function decode_utf8(octets) {
 test(
   "UTF-8 encoding",
   function() {
-    expect(2176);
+    expect(544);
 
-    var actual, expected, str, i, j, BATCH_SIZE = 1024;
+    var actual, expected, str, i, j, BATCH_SIZE = 0x1000;
 
     for (i = 0; i < 0x10FFFF; i += BATCH_SIZE) {
       str = '';
@@ -65,9 +107,9 @@ test(
 test(
   "UTF-8 decoding",
   function() {
-    expect(1088);
+    expect(272);
 
-    var encoded, actual, expected, str, i, j, BATCH_SIZE = 1024;
+    var encoded, actual, expected, str, i, j, BATCH_SIZE = 0x1000;
 
     for (i = 0; i < 0x10FFFF; i += BATCH_SIZE) {
       str = '';
@@ -95,7 +137,7 @@ test(
   });
 
 test(
-  "Single byte encoding",
+  "windows-1252 encoding",
   function() {
 
     var encoding = 'windows-1252';
