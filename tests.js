@@ -37,10 +37,8 @@ function testEncodeDecode(encoding, min, max) {
             string += String.fromCharCode(i);
           }
         }
-        var len = stringEncoding.encodedLength(string, encoding);
-        var array = new Uint8Array(len);
-        var encoded = stringEncoding.encode(string, array, encoding);
-        var decoded = stringEncoding.decode(array, encoding);
+        var encoded = TextEncoder(encoding).encode(string);
+        var decoded = TextDecoder(encoding).decode(encoded);
         equal(string, decoded, 'Round trip ' + cpname(i) + " - " + cpname(j));
       }
     });
@@ -93,9 +91,7 @@ test(
       }
       expected = encode_utf8(str);
 
-      actual = new Uint8Array(stringEncoding.encodedLength(str, 'UTF-8'));
-      stringEncoding.encode(str, actual, 'UTF-8');
-
+      actual = TextEncoder('UTF-8').encode(str);
       arrayEqual(actual, expected, 'expected equal encodings');
     }
   });
@@ -126,7 +122,7 @@ test(
       encoded = encode_utf8(str);
 
       expected = decode_utf8(encoded);
-      actual = stringEncoding.decode(new Uint8Array(encoded), 'UTF-8');
+      actual = TextDecoder('UTF-8').decode(new Uint8Array(encoded));
 
       equal(actual, expected, 'expected equal decodings');
     }
@@ -136,16 +132,12 @@ function testEncodeDecodeSample(encoding, string, expected) {
   test(
     encoding + " - Encode/Decode - reference sample",
     function() {
-      expect(4);
+      expect(3);
 
-      var len = stringEncoding.encodedLength(string, encoding);
-      equal(len, expected.length, 'encoded length mismatch ' + encoding);
+      var encoded = TextEncoder(encoding).encode(string);
+      arrayEqual(encoded, expected, 'expected equal encodings ' + encoding);
 
-      var array = new Uint8Array(len);
-      stringEncoding.encode(string, array, encoding);
-      arrayEqual(array, expected, 'expected equal encodings ' + encoding);
-
-      var decoded = stringEncoding.decode(new Uint8Array(expected), encoding);
+      var decoded = TextDecoder(encoding).decode(new Uint8Array(expected));
       equal(decoded, string, 'expected equal decodings ' + encoding);
     });
 }
@@ -199,11 +191,38 @@ test(
 
     badStrings.forEach(
       function(t) {
-        var length = stringEncoding.encodedLength(t.input, 'utf-8');
-        var array = new Uint8Array(length);
-        var encoded = stringEncoding.encode(t.input, array, 'utf-8');
-        var decoded = stringEncoding.decode(array, 'utf-8');
+        var encoded = TextEncoder('utf-8').encode(t.input);
+        var decoded = TextDecoder('utf-8').decode(encoded);
         equal(t.expected, decoded);
+      });
+  });
+
+test(
+  "fatal flag",
+  function() {
+    expect(14);
+
+    var bad = [
+      { encoding: 'utf-8', input: [0xC0] }, // ends early
+      { encoding: 'utf-8', input: [0xC0, 0x00] }, // invalid trail
+      { encoding: 'utf-8', input: [0xC0, 0xC0] }, // invalid trail
+      { encoding: 'utf-8', input: [0xE0] }, // ends early
+      { encoding: 'utf-8', input: [0xE0, 0x00] }, // invalid trail
+      { encoding: 'utf-8', input: [0xE0, 0xC0] }, // invalid trail
+      { encoding: 'utf-8', input: [0xE0, 0x80, 0x00] }, // invalid trail
+      { encoding: 'utf-8', input: [0xE0, 0x80, 0xC0] }, // invalid trail
+      { encoding: 'utf-8', input: [0xFC, 0x80, 0x80, 0x80, 0x80, 0x80] }, // > 0x10FFFF
+      { encoding: 'utf-16', input: [0x00] }, // truncated code unit
+      { encoding: 'utf-16', input: [0x00, 0xd8] }, // surrogate half
+      { encoding: 'utf-16', input: [0x00, 0xd8, 0x00, 0x00] }, // surrogate half
+      { encoding: 'utf-16', input: [0x00, 0xdc, 0x00, 0x00] }, // trail surrogate
+      { encoding: 'utf-16', input: [0x00, 0xdc, 0x00, 0xd8] }  // swapped surrogates
+      // TODO: Single byte encoding cases
+    ];
+
+    bad.forEach(
+      function(t) {
+        raises(function () { TextDecoder('utf-8').encode(t.input, {fatal: true}); });
       });
   });
 
@@ -221,16 +240,19 @@ test(
 
     encodings.forEach(
       function(test) {
+        var lower = test.encoding.toLowerCase();
+        var upper = test.encoding.toUpperCase();
         equal(
-          stringEncoding.encodedLength(test.string, test.encoding),
-          stringEncoding.encodedLength(test.string, test.encoding.toLowerCase()));
+          TextDecoder(lower).decode(TextEncoder(lower).encode(test.string)),
+          TextDecoder(upper).decode(TextEncoder(upper).encode(test.string))
+        );
       });
   });
 
 test(
   "Byte-order marks",
   function() {
-    expect(9);
+    //expect(9);
 
     var utf8 = [0xEF, 0xBB, 0xBF, 0x7A, 0xC2, 0xA2, 0xE6, 0xB0, 0xB4, 0xF0, 0x9D, 0x84, 0x9E, 0xF4, 0x8F, 0xBF, 0xBD];
     var utf16le = [0xff, 0xfe, 0x7A, 0x00, 0xA2, 0x00, 0x34, 0x6C, 0x34, 0xD8, 0x1E, 0xDD, 0xFF, 0xDB, 0xFD, 0xDF];
@@ -239,10 +261,12 @@ test(
     var string = "z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD"; // z, cent, CJK water, G-Clef, Private-use character
 
     // Basic cases
-    equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-8'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-16le'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-16be'), string);
+    equal(TextDecoder('utf-8').decode(new Uint8Array(utf8)), string);
+    equal(TextDecoder('utf-16le').decode(new Uint8Array(utf16le)), string);
+    equal(TextDecoder('utf-16be').decode(new Uint8Array(utf16be)), string);
 
+    /*
+    // TODO: New API?
     // Verify that BOM wins
     equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-16le'), string);
     equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-16be'), string);
@@ -250,6 +274,7 @@ test(
     equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-16be'), string);
     equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-8'), string);
     equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-16le'), string);
+    */
   });
 
 test(
@@ -270,16 +295,21 @@ test(
       function(test) {
 
         var with_null = test.string + '\x00' + test.string;
-        var len = stringEncoding.encodedLength(with_null, test.encoding);
-
-        var array = new Uint8Array(len);
-        stringEncoding.encode(with_null, array, test.encoding);
-
-        var found_len = stringEncoding.stringLength(array, test.encoding);
-        var decoded = stringEncoding.decode(new DataView(array.buffer, 0, found_len), test.encoding);
+        var encoded = TextEncoder(test.encoding).encode(with_null);
+        var decoded = TextDecoder(test.encoding).decode(encoded, {nullTerminator: true});
 
         equal(decoded, test.string);
       });
 
     raises(function () { stringEncoding.stringLength(new Uint8Array([0]), 'binary'); });
+  });
+
+test(
+  "Encoding names",
+  function () {
+    equal(TextEncoder("utf-8").encoding, "utf-8"); // canonical case
+    equal(TextEncoder("UTF-16").encoding, "utf-16le"); // canonical case and name
+    equal(TextEncoder("iso8859-1").encoding, "windows-1252"); // canonical case and name
+    equal(TextEncoder("iso-8859-1").encoding, "windows-1252"); // canonical case and name
+
   });

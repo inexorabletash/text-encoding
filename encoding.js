@@ -14,17 +14,17 @@
       },
       write: function(o) {
         if (!unbounded && pos >= bytes.length) {
-          throw new RangeError("Writing past the end of the buffer");
+          throw new Error("Writing past the end of the buffer");
         }
         bytes[pos++] = o;
       },
       offset: function (n) {
         pos += n;
         if (pos < 0) {
-          throw new RangeError("Seeking past start of the buffer");
+          throw new Error("Seeking past start of the buffer");
         }
         if (pos >= bytes.length) {
-          throw new RangeError("Seeking past the end of the buffer");
+          throw new Error("Seeking past the end of the buffer");
         }
       },
       pos: function() {
@@ -311,7 +311,7 @@
           break;
         }
         if (code_point > 0xff) {
-          throw new Error('Can not encode code point ' + code_point);
+          throw new Error('Invalid binary string data');
         }
         output_byte_stream.write(code_point);
       }
@@ -320,8 +320,8 @@
 
   function binaryDecoder() {
     return function(input_byte_stream, output_code_point_stream, options) {
-      if (options.operation === "length") {
-        throw new Error("Invalid operation for binary encoding");
+      if (options.nullTerminator) {
+        throw new Error("Null termination no supported for 'binary' decoder");
       }
       while (true) {
         var bite = input_byte_stream.read();
@@ -375,7 +375,7 @@
           utf8_lower_boundary = 0;
       while (true) {
         var bite = input_byte_stream.read();
-        if (bite === eof) {
+        if (bite === eof || (bite === 0 && options.nullTerminator)) {
           if (utf8_bytes_needed !== 0) {
             if (options.fatal) {
               throw new Error("Invalid UTF-8 sequence");
@@ -386,9 +386,6 @@
         }
         if (utf8_bytes_needed === 0) {
           if (0x00 <= bite && bite <= 0x7F) {
-            if (bite === 0 && options.operation === "length") {
-              return input_byte_stream.pos() - 1;
-            }
             output_code_point_stream.emit(bite);
             continue;
           } else if (0xC0 <= bite && bite <= 0xDF) {
@@ -480,11 +477,8 @@
     return function (input_byte_stream, output_code_point_stream, options) {
       while (true) {
         var bite = input_byte_stream.read();
-        if (bite === eof) {
+        if (bite === eof || (bite === 0 && options.nullTerminator)) {
           break;
-        }
-        if (options.operation === "length" && bite === 0) {
-          return input_byte_stream.pos() - 1;
         }
         if (bite <= 0x7f) {
           output_code_point_stream.emit(bite);
@@ -492,7 +486,7 @@
           var code_point = map[bite - 128];
           if (code_point === null) {
             if (options.fatal) {
-              throw new RangeError('Invalid value in stream');
+              throw new Error('Invalid code point');
             }
             output_code_point_stream.emit(fallback_code_point);
           } else {
@@ -533,7 +527,7 @@
           break;
         }
         if (0xD800 <= code_point && code_point <= 0xDFFF) {
-          throw new RangeError('Invalid code point');
+          throw new Error('Invalid code point');
         }
         if (code_point <= 0xFFFF) {
           convert_to_bytes(code_point);
@@ -572,9 +566,6 @@
           code_point = (bite << 8) + utf16_lead_byte;
         }
         utf16_lead_byte = null;
-        if (options.operation === "length" && code_point === 0) {
-          return input_byte_stream.pos() - 2;
-        }
         if (utf16_lead_surrogate !== null) {
           var lead_surrogate = utf16_lead_surrogate;
           utf16_lead_surrogate = null;
@@ -601,6 +592,15 @@
           output_code_point_stream.emit(fallback_code_point);
           continue;
         }
+        if (code_point === 0 && options.nullTerminator) {
+          if (utf16_lead_surrogate) {
+            if (options.fatal) {
+              throw new Error("Invalid stream");
+            }
+            output_code_point_stream.emit(fallback_code_point);
+          }
+          break;
+        }
         output_code_point_stream.emit(code_point);
       }
       return (void 0);
@@ -619,98 +619,89 @@
   }
 
   function detectEncoding(label, input_stream) {
-    var codec = getEncoding(label);
     if (input_stream.match([0xFF, 0xFE])) {
-      codec = getEncoding('utf-16');
       input_stream.offset(2);
+      return 'utf-16';
     } else if (input_stream.match([0xFE, 0XFF])) {
-      codec = getEncoding('utf-16be');
       input_stream.offset(2);
+      return 'utf-16be';
     } else if (input_stream.match([0xEF, 0xBB, 0xBF])) {
-      codec = getEncoding('utf-8');
       input_stream.offset(3);
+      return 'utf-8';
     }
-    return codec;
+    return label;
   }
 
   var DEFAULT_ENCODING = 'utf-8';
 
-  function decode(view,
-                  encoding) {
-    if (!view || !('buffer' in view) || !('byteOffset' in view) || !('byteLength' in view)) {
-      throw new TypeError('Expected ArrayBufferView');
+  function TextEncoder(encoding) {
+    if (!this || this === global) {
+      return new TextEncoder(encoding);
     }
     encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
-
-    var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-    var input_stream = ByteStream(bytes);
-    var codec = detectEncoding(encoding, input_stream);
-
-    var output_stream = CodePointOutputStream();
-    codec.decode(input_stream, output_stream, {operation: "decode", fatal: false});
-    return output_stream.string();
+    this._codec = getEncoding(encoding); // may throw
+    return this;
   }
 
-  function stringLength(view,
-                        encoding) {
-    if (!view || !('buffer' in view) || !('byteOffset' in view) || !('byteLength' in view)) {
-      throw new TypeError('Expected ArrayBufferView');
+  TextEncoder.prototype = {
+    encode: function encode(string, options) {
+      string = String(string);
+      options = Object(options);
+
+      // TODO: options.stream
+
+      var bytes = [];
+      var output_stream = ByteStream(bytes, true);
+      var input_stream = CodePointInputStream(string);
+      this._codec.encode(output_stream, input_stream, {
+        // TODO: options
+      });
+      return new Uint8Array(bytes);
+    },
+    get encoding() {
+      return this._codec.name;
     }
-    encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
-
-    var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-    var input_stream = ByteStream(bytes);
-    var codec = detectEncoding(encoding, input_stream);
-
-    var output_stream = { emit: function () {} };
-    return codec.decode(input_stream, output_stream, {operation: "length", fatal: false});
-  }
-
-  function encode(value,
-                  view,
-                  encoding) {
-    value = String(value);
-    if (!view || !('buffer' in view) || !('byteOffset' in view) || !('byteLength' in view)) {
-      throw new TypeError('Expected ArrayBufferView');
-    }
-    encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
-
-    var codec = getEncoding(encoding);
-
-    var bytes = [];
-    var output_stream = ByteStream(bytes, true);
-    var input_stream = CodePointInputStream(value);
-    codec.encode(output_stream, input_stream, {});
-
-    if (bytes.length > view.byteLength) {
-      throw new RangeError("Writing past the end of the buffer");
-    }
-
-    (new Uint8Array(view.buffer, view.byteOffset, bytes.length)).set(bytes);
-
-    return bytes.length;
-  }
-
-  function encodedLength(value,
-                         encoding) {
-    value = String(value);
-    encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
-
-    var codec = getEncoding(encoding);
-
-    var bytes = [];
-    var output_stream = ByteStream(bytes, true);
-    var input_stream = CodePointInputStream(value);
-    codec.encode(output_stream, input_stream, {});
-    return bytes.length;
-  }
-
-  var StringEncoding = {
-    decode: decode,
-    stringLength: stringLength,
-    encode: encode,
-    encodedLength: encodedLength
   };
 
-  global.stringEncoding = global.stringEncoding || StringEncoding;
+  function TextDecoder(encoding) {
+    if (!this || this === global) {
+      return new TextDecoder(encoding);
+    }
+    encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
+    this._codec = getEncoding(encoding); // may throw
+    return this;
+  }
+
+  TextDecoder.prototype = {
+    decode: function decode(view, options) {
+      if (!view || !('buffer' in view) || !('byteOffset' in view) || !('byteLength' in view)) {
+        throw new TypeError('Expected ArrayBufferView');
+      }
+      options = Object(options);
+      // TODO: options.stream
+      // TODO: encoding detection via BOM?
+
+      var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+      var input_stream = ByteStream(bytes);
+
+      // if (!options.stream) then ...
+      var detected = detectEncoding(this.encoding, input_stream);
+      if (getEncoding(detected) !== this._codec) {
+        throw new Error("BOM mismatch"); // TODO: what to do here?
+      }
+
+      var output_stream = CodePointOutputStream();
+      this._codec.decode(input_stream, output_stream, {
+        nullTerminator: Boolean(options.nullTerminator),
+        fatal: Boolean(options.fatal)
+      });
+      return output_stream.string();
+    },
+    get encoding() {
+      return this._codec.name;
+    }
+  };
+
+  global.TextEncoder = global.TextEncoder || TextEncoder;
+  global.TextDecoder = global.TextDecoder || TextDecoder;
 }(this));
