@@ -3,20 +3,14 @@
 
   var eof = -1;
 
-  function ByteStream(bytes, unbounded) {
+  function ByteInputStream(bytes) {
     var pos = 0;
     return {
       read: function() {
-        if (!unbounded && pos >= bytes.length) {
+        if (pos >= bytes.length) {
           return eof;
         }
         return bytes[pos++];
-      },
-      write: function(o) {
-        if (!unbounded && pos >= bytes.length) {
-          throw new Error("Writing past the end of the buffer");
-        }
-        bytes[pos++] = o;
       },
       offset: function (n) {
         pos += n;
@@ -26,9 +20,6 @@
         if (pos >= bytes.length) {
           throw new Error("Seeking past the end of the buffer");
         }
-      },
-      pos: function() {
-        return pos;
       },
       match: function(test) {
         if (test.length > pos + bytes.length) {
@@ -41,6 +32,15 @@
           }
         }
         return true;
+      }
+    };
+  }
+
+  function ByteOutputStream(bytes) {
+    var pos = 0;
+    return {
+      write: function(o) {
+        bytes[pos++] = o;
       }
     };
   }
@@ -651,7 +651,7 @@
       // TODO: options.stream
 
       var bytes = [];
-      var output_stream = ByteStream(bytes, true);
+      var output_stream = ByteOutputStream(bytes);
       var input_stream = CodePointInputStream(string);
       this._codec.encode(output_stream, input_stream, {
         // TODO: options
@@ -682,7 +682,7 @@
       // TODO: encoding detection via BOM?
 
       var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-      var input_stream = ByteStream(bytes);
+      var input_stream = ByteInputStream(bytes);
 
       // if (!options.stream) then ...
       var detected = detectEncoding(this.encoding, input_stream);
