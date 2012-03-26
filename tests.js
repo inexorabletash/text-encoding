@@ -278,33 +278,6 @@ test(
   });
 
 test(
-  "Null termination",
-  function() {
-    expect(7);
-
-    var encodings = [
-      { encoding: 'UTF-8', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
-      { encoding: 'UTF-16', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
-      { encoding: 'UTF-16LE', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
-      { encoding: 'UTF-16BE', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
-      { encoding: 'ASCII', string: 'ABCabc123!@#' },
-      { encoding: 'ISO-8859-1', string: 'ABCabc123!@#\xA2' }
-    ];
-
-    encodings.forEach(
-      function(test) {
-
-        var with_null = test.string + '\x00' + test.string;
-        var encoded = TextEncoder(test.encoding).encode(with_null);
-        var decoded = TextDecoder(test.encoding).decode(encoded, {nullTerminator: true});
-
-        equal(decoded, test.string);
-      });
-
-    raises(function () { stringEncoding.stringLength(new Uint8Array([0]), 'binary'); });
-  });
-
-test(
   "Encoding names",
   function () {
     equal(TextEncoder("utf-8").encoding, "utf-8"); // canonical case

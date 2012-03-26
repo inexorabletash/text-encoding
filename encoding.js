@@ -320,9 +320,6 @@
 
   function binaryDecoder() {
     return function(input_byte_stream, output_code_point_stream, options) {
-      if (options.nullTerminator) {
-        throw new Error("Null termination no supported for 'binary' decoder");
-      }
       while (true) {
         var bite = input_byte_stream.read();
         if (bite === eof) {
@@ -375,7 +372,7 @@
           utf8_lower_boundary = 0;
       while (true) {
         var bite = input_byte_stream.read();
-        if (bite === eof || (bite === 0 && options.nullTerminator)) {
+        if (bite === eof) {
           if (utf8_bytes_needed !== 0) {
             if (options.fatal) {
               throw new Error("Invalid UTF-8 sequence");
@@ -477,7 +474,7 @@
     return function (input_byte_stream, output_code_point_stream, options) {
       while (true) {
         var bite = input_byte_stream.read();
-        if (bite === eof || (bite === 0 && options.nullTerminator)) {
+        if (bite === eof) {
           break;
         }
         if (bite <= 0x7f) {
@@ -592,15 +589,6 @@
           output_code_point_stream.emit(fallback_code_point);
           continue;
         }
-        if (code_point === 0 && options.nullTerminator) {
-          if (utf16_lead_surrogate) {
-            if (options.fatal) {
-              throw new Error("Invalid stream");
-            }
-            output_code_point_stream.emit(fallback_code_point);
-          }
-          break;
-        }
         output_code_point_stream.emit(code_point);
       }
       return (void 0);
@@ -692,7 +680,6 @@
 
       var output_stream = CodePointOutputStream();
       this._codec.decode(input_stream, output_stream, {
-        nullTerminator: Boolean(options.nullTerminator),
         fatal: Boolean(options.fatal)
       });
       return output_stream.string();
