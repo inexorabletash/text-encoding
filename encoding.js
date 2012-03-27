@@ -583,6 +583,102 @@
     };
   }
 
+  // TODO: Include these indexes
+  var jis0208Index = {};
+  var jis0212Index = {};
+  function jis0208CodePoint(row, cell) {
+    var location = row * 94 + cell;
+    return (location in jis0208Index) ? jis0208Index[location] : null;
+  }
+  function jis0212CodePoint(row, cell) {
+    var location = row * 94 + cell;
+    return (location in jis0212Index) ? jis0212Index[location] : null;
+  }
+
+  function EUCJPDecoder() {
+    var eucjp_first = 0x00, eucjp_second = 0x00;
+    this.decode = function(input_byte_stream, output_code_point_stream, options) {
+      var bite = input_byte_stream.read();
+      if (bite === eof) {
+        if (eucjp_first === 0x00 && eucjp_second === 0x00) {
+          return;
+        } else {
+          eucjp_first = 0x00;
+          eucjp_second = 0x00;
+          if (options.fatal) {
+            throw new Error("Invalid stream");
+          }
+          output_code_point_stream.emit(fallback_code_point);
+          return;
+        }
+      }
+      if (eucjp_second !== 0x00) {
+        var lead = eucjp_second;
+        eucjp_second = 0x00;
+        var code_point = null;
+        if (0xA1 <= lead && lead <= 0xFE && 0xA1 <= bite && bite <= 0xFE) {
+          code_point = jis0212CodePoint(lead - 0xA1, bite - 0xA1);
+        }
+        if (code_point === null && (bite < 0xA1 || bite > 0xFE)) {
+          input_byte_stream.offset(-1);
+        }
+        if (code_point === null) {
+          if (options.fatal) {
+            throw new Error("Invalid stream");
+          }
+          output_code_point_stream.emit(fallback_code_point);
+          return;
+        }
+        output_code_point_stream.emit(code_point);
+        return;
+      }
+      if (eucjp_first === 0x8E && 0xA1 <= bite && bite <= 0xDF) {
+        eucjp_first = 0x00;
+        output_code_point_stream.emit(0xFEC0 + bite);
+        return;
+      }
+      if (eucjp_first === 0x8F && 0xA1 <= bite && bite <= 0xFE) {
+        eucjp_first = 0x00;
+        eucjp_second = bite;
+        return;
+      }
+      if (eucjp_first !== 0x00) {
+        var lead = eucjp_first;
+        eucjp_first = 0x00;
+        var code_point = null;
+        if (0xA1 <= lead && lead <= 0xFE && 0xA1 <= bite && bite <= 0xFE) {
+          code_point = jis0208CodePoint(lead - 0xA1, bite - 0xA1);
+        }
+        if (code_point === null && (bite < 0xA1 || bite > 0xFE)) {
+          input_byte_stream.offset(-1);
+        }
+        if (code_point === null) {
+          if (options.fatal) {
+            throw new Error("Invalid stream");
+          }
+          output_code_point_stream.emit(fallback_code_point);
+          return;
+        }
+        output_code_point_stream.emit(code_point);
+        return;
+      }
+      if (0x00 <= bite && bite <= 0x7F) {
+        output_code_point_stream.emit(bite);
+        return;
+      }
+      if (bite === 0x8E || bite === 0x8F || (0xA1 <= bite && bite <= 0xFE)) {
+        eucjp_first = bite;
+        return;
+      }
+      if (options.fatal) {
+        throw new Error("Invalid stream");
+      }
+      output_code_point_stream.emit(fallback_code_point);
+      return;
+    };
+  }
+
+
   function getEncoding(label) {
     label = String(label).trim().toLowerCase();
     var i;
