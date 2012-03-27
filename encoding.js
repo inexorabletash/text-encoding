@@ -664,6 +664,9 @@
     return this;
   }
 
+  // TODO: Issue if input byte stream is offset by decoder
+  // TODO: BOM detection will not work if stream header spans multiple calls
+  // (last N bytes of previous stream may need to be retained?)
   TextDecoder.prototype = {
     decode: function decode(view, options) {
       if (!view || !('buffer' in view) || !('byteOffset' in view) || !('byteLength' in view)) {

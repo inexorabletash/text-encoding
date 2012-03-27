@@ -286,3 +286,25 @@ test(
     equal(TextEncoder("iso-8859-1").encoding, "windows-1252"); // canonical case and name
 
   });
+
+test(
+  "Streaming Decode",
+  function () {
+    ["utf-8", "utf-16le", "utf-16be"].forEach(function (encoding) {
+      var string = "\x00123ABCabc\x80\xFF\u0100\u1000\uFFFD\uD800\uDC00\uDBFF\uDFFF";
+      var encoded = TextEncoder(encoding).encode(string);
+
+      for (var len = 1; len <= 5; ++len) {
+        var out = "", decoder = TextDecoder(encoding);
+        for (var i = 0; i < encoded.length; i += len) {
+          var sub = [];
+          for (var j = i; j < encoded.length && j < i + len; ++j) {
+            sub.push(encoded[j]);
+          }
+          out += decoder.decode(new Uint8Array(sub), {stream: true});
+        }
+        out += decoder.decode(new Uint8Array());
+        equal(out, string, "streaming decode " + encoding);
+      }
+    });
+  });
