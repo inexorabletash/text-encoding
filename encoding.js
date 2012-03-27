@@ -594,6 +594,7 @@
     throw new Error("Unknown encoding: " + label);
   }
 
+  // NOTE: currently unused
   function detectEncoding(label, input_stream) {
     if (input_stream.match([0xFF, 0xFE])) {
       input_stream.offset(2);
@@ -623,10 +624,9 @@
 
   TextEncoder.prototype = {
     encode: function encode(string, options) {
-      string = String(string);
+      string = string ? String(string) : "";
       options = Object(options);
 
-      // TODO: options.stream
       if (!this._streaming) {
         this._encoder = this._encoding.getEncoder();
       }
@@ -669,8 +669,11 @@
   // (last N bytes of previous stream may need to be retained?)
   TextDecoder.prototype = {
     decode: function decode(view, options) {
-      if (!view || !('buffer' in view) || !('byteOffset' in view) || !('byteLength' in view)) {
+
+      if (view && !('buffer' in view && 'byteOffset' in view && 'byteLength' in view)) {
         throw new TypeError('Expected ArrayBufferView');
+      } else if (!view) {
+        view = new Uint8Array();
       }
       options = Object(options);
 

@@ -303,7 +303,7 @@ test(
           }
           out += decoder.decode(new Uint8Array(sub), {stream: true});
         }
-        out += decoder.decode(new Uint8Array());
+        out += decoder.decode();
         equal(out, string, "streaming decode " + encoding);
       }
     });
