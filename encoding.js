@@ -569,7 +569,7 @@
     };
   }
 
-  // TODO: Include these indexes
+  // TODO: Include these indexes or fetch them dynamically
   var jis0208Index = {};
   var jis0212Index = {};
   function jis0208CodePoint(row, cell) {
@@ -647,6 +647,270 @@
         eucjp_first = bite;
         return;
       }
+      decoderError(options.fatal, output_code_point_stream);
+    };
+  }
+
+  function ISO2022JPDecoder() {
+    var iso2022jp_state = "ASCII",
+        iso2022jp_jis0212 = false,
+        iso2022jp_lead = 0x00;
+    this.decode = function(input_byte_stream, output_code_point_stream, options) {
+      var bite = input_byte_stream.read();
+      switch (iso2022jp_state) {
+      case "ASCII":
+        if (bite === 0x1B) {
+          iso2022jp_state = "escape start";
+          return;
+        }
+        if (0x00 <= bite && bite <= 0x7E) {
+          output_code_point_stream.emit(bite);
+        }
+        if (bite === eof) {
+          return;
+        }
+        decoderError(options.fatal, output_code_point_stream);
+        return;
+
+      case "escape start":
+        if (bite === 0x24 || bite === 0x28) {
+          iso2022jp_lead = bite;
+          iso2022jp_state = "escape middle";
+          return;
+        }
+        if (bite != eof) {
+          input_byte_stream.offset(-1);
+        }
+        iso2022jp_state = "ASCII";
+        decoderError(options.fatal, output_code_point_stream);
+        return;
+
+      case "escape middle":
+        var lead = iso2022jp_lead;
+        iso2022jp_lead = 0x00;
+        if (lead === 0x24 && (bite === 0x40 || bite === 0x42)) {
+          iso2022jp_jis0212 = false;
+          iso2022jp_state = "lead";
+          return;
+        }
+        if (lead === 0x24 && bite === 0x28) {
+          iso2022jp_state = "escape final";
+          return;
+        }
+        if (lead === 0x28 && (bite === 0x42 || bite === 0x4A)) {
+          iso2022jp_state = "ASCII";
+          return;
+        }
+        if (lead === 0x28 && bite === 0x49) {
+          iso2022jp_state = "Katakana";
+          return;
+        }
+        if (bite === eof) {
+          input_byte_stream.offset(-1);
+        } else {
+          input_byte_stream.offset(-2);
+        }
+        iso2022jp_state = "ASCII";
+        decoderError(options.fatal, output_code_point_stream);
+        return;
+
+      case "escape final":
+        if (bite === 0x44) {
+          iso2022jp_jis0212 = true;
+          iso2022jp_state = "lead";
+          return;
+        }
+        if (bite === eof) {
+          input_byte_stream.offset(-2);
+        } else {
+          input_byte_stream.offset(-3);
+        }
+        iso2022jp_state = "ASCII";
+        decoderError(options.fatal, output_code_point_stream);
+        return;
+
+      case "lead":
+        if (bite === 0x0A) {
+          iso2022jp_state = "ASCII";
+          decoderError(options.fatal, output_code_point_stream, 0x000A);
+          return;
+        }
+        if (bite === 0x1B) {
+          iso2022jp_state = "escape";
+          return;
+        }
+        if (bite === eof) {
+          return;
+        }
+        iso2022jp_lead = bite;
+        iso2022jp_state = "trail";
+        return;
+
+      case "trail":
+        iso2022jp_state = lead;
+        if (bite === eof) {
+          decoderError(options.fatal, output_code_point_stream);
+          return;
+        }
+        var code_point = null;
+        if (0x21 <= iso2022jp_lead && iso2022jp_lead <= 0x7E &&
+            0x21 <= bite && bite <= 0x7E) {
+          if (iso2022jp_jis0212 === false) {
+            code_point = jis0208CodePoint(iso2022jp_lead - 0x21, bite - 0x21);
+          } else {
+            code_point = jis0212CodePoint(iso2022jp_lead - 0x21, bite - 0x21);
+          }
+        }
+        if (code_point === null) {
+          decoderError(options.fatal, output_code_point_stream);
+          return;
+        }
+        output_code_point_stream.emit(code_point);
+        return;
+
+      case "Katakana":
+        if (bite === 0x1B) {
+          iso2022jp_state = "escape";
+          return;
+        }
+        if (0x21 <= bite && bite <= 0x5F) {
+          output_code_point_stream.emit(0xFF40 + bite);
+          return;
+        }
+        if (bite === eof) {
+          return;
+        }
+        decoderError(options.fatal, output_code_point_stream);
+        return;
+      }
+    };
+  }
+
+  function ShiftJISDecoder() {
+    var shiftjis_fallback_code_point = 0x30FB,
+        shiftjis_lead = 0x00;
+    this.decode = function(input_byte_stream, output_code_point_stream, options) {
+      var bite = input_byte_stream.read();
+      if (bite === eof && shiftjis_lead === 0) {
+        return;
+      }
+      if (bite === eof && shiftjis_lead !== 0) {
+        shiftjis_lead = 0x00;
+        decoderError(options.fatal, output_code_point_stream);
+      }
+      if (shiftjis_lead !== 0x00) {
+        var lead = shiftjis_lead;
+        shiftjis_lead = 0x00;
+        if ((0x40 <= bite && bite <= 0x7E) || (0x80 <= bite && bite <= 0xFC)) {
+          var offset = (byte < 0x7F) ? 64 : 65;
+          if (0xF0 <= lead && lead <= 0xF9) {
+            decoderError(options.fatal, output_code_point_stream,
+                         0xE000 + (lead - 0xF0) * 188 + bite - offset);
+            return;
+          }
+          var adjust = (bite < 0x9F) ? 1 : 0;
+          var lead_offset = (lead < 160) ? 122 : 176;
+          if (adjust === 0) {
+            offset = 159;
+          }
+          var row = (lead - lead_offset) >> (1 - offset - 33);
+          var code_point = jis0208CodePoint(row, bite - offset);
+          if (code_point === null) {
+            decoderError(options.fatal, output_code_point_stream,
+                         shiftjis_fallback_code_point);
+            return;
+          }
+          output_code_point_stream.emit(code_point);
+          return;
+        }
+        input_code_point_stream.offset(-1);
+        decoderError(options.fatal, output_code_point_stream);
+      }
+      if (0x00 <= bite && bite <= 0x80) {
+        output_code_point_stream.emit(bite);
+        return;
+      }
+      if (bite === 0xA0) {
+        output_code_point_stream.emit(0xF8F0);
+        return;
+      }
+      if (0xA1 <= bite && bite <= 0xDF) {
+        output_code_point_stream.emit(0xFEC0 + bite);
+        return;
+      }
+      if (0xFD <= bite && bite <= 0xFF) {
+        output_code_point_stream.emit(0xF7F4 + bite);
+        return;
+      }
+      if ((0x81 <= bite && bite <= 0x9F) ||
+          (0xE0 <= bite && bite <= 0xFC)) {
+        shiftjis_lead  = bite;
+        return;
+      }
+      decoderError(options.fatal, output_code_point_stream);
+    };
+  }
+
+
+  // TODO: Include this index or fetch it dynamically
+  var euckrIndex = {};
+  function euckrCodePoint(index) {
+    return (index in euckrIndex) ? euckrIndex[index] : null;
+  }
+
+  function EUCKRDecoder() {
+    var euckr_lead = 0x00;
+    this.decode = function(input_byte_stream, output_code_point_stream, options) {
+      var bite = input_byte_stream.read();
+      if (bite === eof && euckr_lead === 0) {
+        return;
+      }
+      if (bite === eof && euckr_lead !== 0) {
+        euckr_lead = 0x00;
+        decoderError(options.fatal, output_code_point_stream);
+      }
+      if (euckr_lead !== 0x00) {
+        var lead = euckr_lead;
+        var index = null;
+        euckr_lead = 0x00;
+
+        if (0x81 <= lead && lead <= 0xC6) {
+          var emp = (26 + 26 + 126) * (lead - 0x81);
+          if (0x41 <= bite && bite <= 0x5A) {
+            index = temp + bite - 0x41;
+          } else if (0x61 <= bite && bite <= 0x7A) {
+            index = temp + 26 + bite - 0x61;
+          } else if (0x81 <= bite && bite <= 0xFE) {
+            index = temp + 26 + 26 + bite - 0x81;
+          }
+        }
+
+        if (0xC7 <= lead && lead <= 0xFD && 0xA1 <= bite && bite <= 0xFE) {
+          index = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 + (bite - 0xA1);
+        }
+
+        var code_point = (index === null) ? null : euckrCodePoint(index);
+        if (index === null) {
+          input_byte_stream.offset(-1);
+        }
+        if (code_point === null) {
+          decoderError(options.fatal, output_code_point_stream);
+          return;
+        }
+        output_code_point_stream.emit(code_point);
+        return;
+      }
+
+      if (0x00 <= bite && bite <= 0x7F) {
+        output_code_point_stream.emit(bite);
+        return;
+      }
+
+      if (0x81 <= euckr_lead && euckr_lead <= 0xFD) {
+        euckr_lead = bite;
+        return;
+      }
+
       decoderError(options.fatal, output_code_point_stream);
     };
   }
