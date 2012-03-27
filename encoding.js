@@ -365,6 +365,13 @@
     };
   }
 
+  function decoderError(fatal, output_code_point_stream, code_point) {
+    if (fatal) {
+      throw new Error("EncodingError");
+    }
+    output_code_point_stream.emit(code_point || fallback_code_point);
+  }
+
   function UTF8Decoder() {
     var utf8_code_point = 0, utf8_bytes_needed = 0, utf8_bytes_seen = 0,
         utf8_lower_boundary = 0;
@@ -372,10 +379,7 @@
       var bite = input_byte_stream.read();
       if (bite === eof) {
         if (utf8_bytes_needed !== 0) {
-          if (options.fatal) {
-            throw new Error("Invalid UTF-8 sequence");
-          }
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
         }
         return;
       }
@@ -411,15 +415,12 @@
         return;
       }
       if (bite < 0x80 || bite > 0xBF) {
-        if (options.fatal) {
-          throw new Error("Invalid UTF-8 sequence");
-        }
         utf8_code_point = 0;
         utf8_bytes_needed = 0;
         utf8_bytes_seen = 0;
         utf8_lower_boundary = 0;
         input_byte_stream.offset(-1);
-        output_code_point_stream.emit(fallback_code_point);
+        decoderError(options.fatal, output_code_point_stream);
         return;
       }
       utf8_bytes_seen += 1;
@@ -439,10 +440,7 @@
         output_code_point_stream.emit(code_point);
         return;
       }
-      if (options.fatal) {
-        throw new Error("Invalid UTF-8 sequence");
-      }
-      output_code_point_stream.emit(fallback_code_point);
+      decoderError(options.fatal, output_code_point_stream);
     };
   }
 
@@ -475,10 +473,7 @@
       } else {
         var code_point = map[bite - 128];
         if (code_point === null) {
-          if (options.fatal) {
-            throw new Error('Invalid code point');
-          }
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
         } else {
           output_code_point_stream.emit(code_point);
         }
@@ -535,10 +530,7 @@
       var bite = input_byte_stream.read();
       if (bite === eof) {
         if (utf16_lead_byte || utf16_lead_surrogate) {
-          if (options.fatal) {
-            throw new Error("Invalid stream");
-          }
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
         }
         return;
       }
@@ -560,11 +552,8 @@
           output_code_point_stream.emit(0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00));
           return;
         } else {
-          if (options.fatal) {
-            throw new Error("Invalid stream");
-          }
           input_byte_stream.offset(-2);
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
           return;
         }
       }
@@ -573,10 +562,7 @@
         return;
       }
       if (0xDC00 <= code_point && code_point <= 0xDFFF) {
-        if (options.fatal) {
-          throw new Error("Invalid stream");
-        }
-        output_code_point_stream.emit(fallback_code_point);
+        decoderError(options.fatal, output_code_point_stream);
         return;
       }
       output_code_point_stream.emit(code_point);
@@ -605,10 +591,7 @@
         } else {
           eucjp_first = 0x00;
           eucjp_second = 0x00;
-          if (options.fatal) {
-            throw new Error("Invalid stream");
-          }
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
           return;
         }
       }
@@ -623,10 +606,7 @@
           input_byte_stream.offset(-1);
         }
         if (code_point === null) {
-          if (options.fatal) {
-            throw new Error("Invalid stream");
-          }
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
           return;
         }
         output_code_point_stream.emit(code_point);
@@ -653,10 +633,7 @@
           input_byte_stream.offset(-1);
         }
         if (code_point === null) {
-          if (options.fatal) {
-            throw new Error("Invalid stream");
-          }
-          output_code_point_stream.emit(fallback_code_point);
+          decoderError(options.fatal, output_code_point_stream);
           return;
         }
         output_code_point_stream.emit(code_point);
@@ -670,11 +647,7 @@
         eucjp_first = bite;
         return;
       }
-      if (options.fatal) {
-        throw new Error("Invalid stream");
-      }
-      output_code_point_stream.emit(fallback_code_point);
-      return;
+      decoderError(options.fatal, output_code_point_stream);
     };
   }
 
