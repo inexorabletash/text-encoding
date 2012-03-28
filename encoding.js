@@ -116,6 +116,46 @@
     },
 
     {
+      name: 'euc-jp',
+      labels: ["cseucjpkdfmtjapanese",
+               "euc-jp",
+               "x-euc-jp"],
+      getDecoder: function () { return new EUCJPDecoder(); }
+    },
+
+    {
+      name: "iso-2022-jp",
+      labels: ["csiso2022jp",
+               "iso-2022-jp"],
+      getDecoder: function () { return new ISO2022JPDecoder(); }
+    },
+
+    {
+      name: "shift_jis",
+      labels: ["csshiftjis",
+               "ms_kanji",
+               "shift-jis",
+               "shift_jis",
+               "windows-31j",
+               "x-sjis"],
+      getDecoder: function () { return new ShiftJISDecoder(); }
+    },
+
+    {
+      name: "euc-kr",
+      labels: ["csksc56011987",
+               "csueckr",
+               "euc-kr",
+               "iso-ir-149",
+               "korean",
+               "ks_c_5601-1989",
+               "ksc5601",
+               "ksc_5601",
+               "windows-949"],
+      getDecoder: function () { return new EUCKRDecoder(); }
+    },
+
+    {
       name: 'utf-16le',
       labels: ['utf-16le', 'utf-16'],
       getEncoder: function () { return new UTF16Encoder(false); },
@@ -561,9 +601,10 @@
     };
   }
 
-  // TODO: Include these indexes or fetch them dynamically
-  var jis0208Index = {};
-  var jis0212Index = {};
+  // NOTE: prepend <script src="index-jis0208.js"></script> to enable
+  var jis0208Index = global.jis0208Index || {};
+  // NOTE: prepend <script src="index-jis0212.js"></script> to enable
+  var jis0212Index = global.jis0212Index || {};
   function jis0208CodePoint(row, cell) {
     var location = row * 94 + cell;
     return (location in jis0208Index) ? jis0208Index[location] : null;
@@ -791,11 +832,11 @@
                                 0xE000 + (lead - 0xF0) * 188 + bite - offset);
           }
           var adjust = (bite < 0x9F) ? 1 : 0;
-          var lead_offset = (lead < 160) ? 122 : 176;
+          var lead_offset = (lead < 160) ? 112 : 176;
           if (adjust === 0) {
             offset = 159;
           }
-          var row = (lead - lead_offset) >> (1 - offset - 33);
+          var row = ((lead - lead_offset) << 1) - 33;
           var code_point = jis0208CodePoint(row, bite - offset);
           if (code_point === null) {
             return decoderError(options.fatal, shiftjis_fallback_code_point);
@@ -826,9 +867,8 @@
     };
   }
 
-
-  // TODO: Include this index or fetch it dynamically
-  var euckrIndex = {};
+  // NOTE: prepend <script src="index-euc-kr.js"></script> to enable
+  var euckrIndex = global.euckrIndex || {};
   function euckrCodePoint(index) {
     return (index in euckrIndex) ? euckrIndex[index] : null;
   }
