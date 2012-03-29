@@ -1,8 +1,9 @@
 (function(global){
   "use strict";
 
-  var eof = -1;
+  /** @const */ var eof = -1;
 
+  /** @param {Uint8Array} bytes */
   function ByteInputStream(bytes) {
     var pos = 0;
     return {
@@ -33,6 +34,7 @@
     };
   }
 
+  /** @param {Array.<number>} bytes */
   function ByteOutputStream(bytes) {
     var pos = 0;
     return {
@@ -42,6 +44,7 @@
     };
   }
 
+  /** @param {string} string */
   function CodePointInputStream(string) {
     var i = 0, n = string.length;
     return {
@@ -98,7 +101,7 @@
     };
   }
 
-  var fallback_code_point = 0xFFFD;
+  /** @const */ var fallback_code_point = 0xFFFD;
 
   var codecs = [
     {
@@ -343,6 +346,7 @@
     }
   ];
 
+  /** @constructor */
   function BinaryEncoder() {
     this.encode = function (output_byte_stream, input_code_point_stream, options) {
       var code_point = input_code_point_stream.read();
@@ -356,6 +360,7 @@
     };
   }
 
+  /** @constructor */
   function BinaryDecoder() {
     this.decode = function (byte_pointer, options) {
       var bite = byte_pointer.get();
@@ -367,6 +372,7 @@
     };
   }
 
+  /** @constructor */
   function UTF8Encoder() {
     this.encode = function (output_byte_stream, input_code_point_stream, options) {
       var code_point = input_code_point_stream.read();
@@ -400,13 +406,18 @@
     };
   }
 
-  function decoderError(fatal, code_point) {
+  /**
+   * @param {boolean} fatal
+   * @param {number=} opt_code_point
+   */
+  function decoderError(fatal, opt_code_point) {
     if (fatal) {
       throw new Error("EncodingError");
     }
-    return code_point || fallback_code_point;
+    return opt_code_point || fallback_code_point;
   }
 
+  /** @constructor */
   function UTF8Decoder() {
     var utf8_code_point = 0, utf8_bytes_needed = 0, utf8_bytes_seen = 0,
         utf8_lower_boundary = 0;
@@ -478,6 +489,7 @@
   }
 
   // Generic Encoders/Decoders for single byte encodings, using maps
+  /** @constructor */
   function SingleByteEncoder(map) {
     this.encode = function (output_byte_stream, input_code_point_stream, options) {
       var code_point = input_code_point_stream.read();
@@ -495,6 +507,7 @@
       }
     };
   }
+  /** @constructor */
   function SingleByteDecoder(map) {
     this.decode = function (byte_pointer, options) {
       var bite = byte_pointer.get();
@@ -527,6 +540,7 @@
     }
   }());
 
+  /** @constructor */
   function UTF16Encoder(utf16_be) {
     this.encode = function(output_byte_stream, input_code_point_stream, options) {
       function convert_to_bytes(code_unit) {
@@ -558,6 +572,7 @@
     };
   }
 
+  /** @constructor */
   function UTF16Decoder(utf16_be) {
     var utf16_lead_byte = null, utf16_lead_surrogate = null;
     this.decode = function(byte_pointer, options) {
@@ -614,6 +629,7 @@
     return (location in jis0212Index) ? jis0212Index[location] : null;
   }
 
+  /** @constructor */
   function EUCJPDecoder() {
     var eucjp_first = 0x00, eucjp_second = 0x00;
     this.decode = function(byte_pointer, options) {
@@ -680,6 +696,7 @@
     };
   }
 
+  /** @constructor */
   function ISO2022JPDecoder() {
     var iso2022jp_state = "ASCII",
         iso2022jp_jis0212 = false,
@@ -809,9 +826,10 @@
     };
   }
 
+  /** @constructor */
   function ShiftJISDecoder() {
-    var shiftjis_fallback_code_point = 0x30FB,
-        shiftjis_lead = 0x00;
+    /** @const */ var shiftjis_fallback_code_point = 0x30FB;
+    var shiftjis_lead = 0x00;
     this.decode = function(byte_pointer, options) {
       var bite = byte_pointer.get();
       if (bite === eof && shiftjis_lead === 0) {
@@ -874,6 +892,7 @@
     return (index in euckrIndex) ? euckrIndex[index] : null;
   }
 
+  /** @constructor */
   function EUCKRDecoder() {
     var euckr_lead = 0x00;
     this.decode = function(byte_pointer, options) {
@@ -892,7 +911,7 @@
         euckr_lead = 0x00;
 
         if (0x81 <= lead && lead <= 0xC6) {
-          var emp = (26 + 26 + 126) * (lead - 0x81);
+          var temp = (26 + 26 + 126) * (lead - 0x81);
           if (0x41 <= bite && bite <= 0x5A) {
             index = temp + bite - 0x41;
           } else if (0x61 <= bite && bite <= 0x7A) {
@@ -956,8 +975,9 @@
     return label;
   }
 
-  var DEFAULT_ENCODING = 'utf-8';
+  /** @const */ var DEFAULT_ENCODING = 'utf-8';
 
+  /** @constructor */
   function TextEncoder(encoding) {
     if (!this || this === global) {
       return new TextEncoder(encoding);
@@ -970,6 +990,10 @@
   }
 
   TextEncoder.prototype = {
+    /**
+     * @param {string=} string
+     * @param {{stream: boolean}=} options
+     */
     encode: function encode(string, options) {
       string = string ? String(string) : "";
       options = Object(options);
@@ -994,12 +1018,13 @@
         this._encoder = null;
       }
       return new Uint8Array(bytes);
-    },
-    get encoding() {
-      return this._encoding.name;
     }
   };
+  Object.defineProperty(TextEncoder.prototype, 'encoding',
+    { get: function () { return this._encoding.name; } });
 
+
+  /** @constructor */
   function TextDecoder(encoding) {
     if (!this || this === global) {
       return new TextDecoder(encoding);
@@ -1015,12 +1040,16 @@
   // TODO: BOM detection will not work if stream header spans multiple calls
   // (last N bytes of previous stream may need to be retained?)
   TextDecoder.prototype = {
+    /**
+     * @param {ArrayBufferView=} view
+     * @param {{fatal: boolean, stream: boolean}=} options
+     */
     decode: function decode(view, options) {
 
       if (view && !('buffer' in view && 'byteOffset' in view && 'byteLength' in view)) {
         throw new TypeError('Expected ArrayBufferView');
       } else if (!view) {
-        view = new Uint8Array();
+        view = new Uint8Array(0);
       }
       options = Object(options);
 
@@ -1034,7 +1063,7 @@
       var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
       var input_stream = ByteInputStream(bytes);
 
-      var detected = detectEncoding(this.encoding, input_stream);
+      var detected = detectEncoding(this._encoding.name, input_stream);
       if (getEncoding(detected) !== this._encoding) {
         throw new Error("BOM mismatch"); // TODO: what to do here?
       }
@@ -1060,11 +1089,10 @@
         this._decoder = null;
       }
       return output_stream.string();
-    },
-    get encoding() {
-      return this._encoding.name;
     }
   };
+  Object.defineProperty(TextDecoder.prototype, 'encoding',
+    { get: function () { return this._encoding.name; } });
 
   global.TextEncoder = global.TextEncoder || TextEncoder;
   global.TextDecoder = global.TextDecoder || TextDecoder;
