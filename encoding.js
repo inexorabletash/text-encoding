@@ -836,14 +836,15 @@
           if (adjust === 0) {
             offset = 159;
           }
-          var row = ((lead - lead_offset) << 1) - 33;
+          var row = (lead - lead_offset) << 1;
+          row = row - adjust - 33;
           var code_point = jis0208CodePoint(row, bite - offset);
           if (code_point === null) {
             return decoderError(options.fatal, shiftjis_fallback_code_point);
           }
           return code_point;
         }
-        input_code_point_stream.offset(-1);
+        byte_pointer.offset(-1);
         return decoderError(options.fatal);
       }
       if (0x00 <= bite && bite <= 0x80) {
