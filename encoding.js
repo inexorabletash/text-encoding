@@ -948,6 +948,67 @@
     };
   }
 
+    /** @constructor */
+  function ISO2022KRDecoder() {
+    var iso2022kr_state = "ASCII",
+        iso2022kr_lead = 0x00;
+    this.decode = function(byte_pointer, options) {
+      var bite = byte_pointer.get();
+      if (bite !== eof) {
+        byte_pointer.offset(1);
+      }
+      switch (iso2022kr_state) {
+      default:
+      case "ASCII":
+        if (bite === 0x0E) {
+          iso2022kr_state = "lead";
+          return null;
+        } else if (bite === 0x0F) {
+          return null;
+        } else if (0x00 <= bite && bite <= 0x7E) {
+          return bite;
+        } else if (bite === eof) {
+          return eof;
+        } else {
+          return decoderError(options.fatal);
+        }
+      case "lead":
+        if (bite === 0x0A) {
+          iso2022kr_state = "ASCII";
+          return decoderError(options.fatal, 0x000A);
+        } else if (bite === 0x0E) {
+          return null;
+        } else if (bite === 0x0F) {
+          iso2022kr_state = "ASCII";
+          return null;
+        } else if (bite === eof) {
+          return eof;
+        } else {
+          iso2022kr_lead = bite;
+          iso2022kr_state = "trail";
+          return null;
+        }
+      case "trail":
+        iso2022kr_state = "lead";
+        if (bite === eof) {
+          return decoderError(options.fatal);
+        }
+        var code_point = null;
+        if (0x21 <= iso2022kr_lead && iso2022kr_lead <= 0x46 &&
+            0x21 <= bite && bite <= 0x7E) {
+          code_point = euckrCodePoint((26 + 26 + 126) * (iso2022kr_lead - 1) + 26 + 26 + bite - 1);
+        } else if (0x74 <= iso2022kr_lead && iso2022kr_lead <= 0x7E &&
+                   0x21 <= bite && bite <= 0x7E) {
+          code_point = euckrCodePoint((26 + 26 + 126) * (0xC7 - 0x81) + (iso2022kr_lead - 0x47) * 94 + (bite - 0x21));
+        }
+        if (code_point !== null) {
+          return code_point;
+        }
+        return decoderError(options.fatal);
+      }
+    };
+  }
+
 
   function getEncoding(label) {
     label = String(label).trim().toLowerCase();
