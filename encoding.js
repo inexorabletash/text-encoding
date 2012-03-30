@@ -139,6 +139,12 @@
     },
 
     {
+      name: "hz-gb-2312",
+      labels: ["hz-gb-2312"],
+      getDecoder: function () { return new HZGB2312Decoder(); }
+    },
+
+    {
       name: 'euc-jp',
       labels: ["cseucjpkdfmtjapanese",
                "euc-jp",
@@ -719,10 +725,76 @@
     };
   }
 
+  /** @constructor */
+  function HZGB2312Decoder() {
+    var hzgb2312 = false, hzgb2312_lead = 0x00;
+    this.decode = function(byte_pointer, options) {
+      var bite = byte_pointer.get();
+      if (bite === eof && hzgb2312_lead === 0x00) {
+        return eof;
+      }
+      if (bite === eof && hzgb2312_lead !== 0x00) {
+        hzgb2312_lead = 0x00;
+        return decoderError(options.fatal);
+      }
+      byte_pointer.offset(1);
+      if (hzgb2312_lead === 0x7E) {
+        hzgb2312_lead = 0x00;
+        if (bite === 0x7B) {
+          hzgb2312 = true;
+          return null;
+        }
+        if (bite === 0x7D) {
+          hzgb2312 = false;
+          return null;
+        }
+        if (bite === 0x7E) {
+          return 0x007E;
+        }
+        if (bite === 0x0A) {
+          hzgb2312_lead = 0x00;
+          return null;
+        }
+        byte_pointer.offset(-1);
+        return decoderError(options.fatal);
+      }
+      if (hzgb2312_lead !== 0x00) {
+        hzgb2312_lead = 0x00;
+        // TODO: Spec incomplete
+        var code_point = gbkCodePoint();
+        if (0x20 <= bite && bite <= 0x7F && code_point != null) {
+          return code_point;
+        }
+        if (bite === 0x0A) {
+          hzgb2312 = false;
+        }
+        return decoderError(options.fatal);
+      }
+      if (bite === 0x7E) {
+        hzgb2312_lead = 0x7E;
+        return null;
+      }
+      if (hzgb2312) {
+        if (0x20 <= bite && bite <= 0x7F) {
+          hzgb2312_lead = bite;
+          return null;
+        }
+        if (bite === 0x0A) {
+          hzgb2312 = false;
+        }
+        return decoderError(options.fatal);
+      }
+      if (0x00 <= bite && bite <= 0x7F) {
+        return bite;
+      }
+      return decoderError(options.fatal);
+    };
+  }
+
   // NOTE: prepend <script src="index-jis0208.js"></script> to enable
-  var jis0208Index = global.jis0208Index || [];
+  var jis0208Index = global['jis0208Index'] || [];
   // NOTE: prepend <script src="index-jis0212.js"></script> to enable
-  var jis0212Index = global.jis0212Index || [];
+  var jis0212Index = global['jis0212Index'] || [];
   function jis0208CodePoint(row, cell) {
     var location = row * 94 + cell;
     return jis0208Index[location] || null;
@@ -990,7 +1062,7 @@
   }
 
   // NOTE: prepend <script src="index-euc-kr.js"></script> to enable
-  var euckrIndex = global.euckrIndex || [];
+  var euckrIndex = global['euckrIndex'] || [];
   function euckrCodePoint(index) {
     return euckrIndex[index] || null;
   }
