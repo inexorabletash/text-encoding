@@ -652,7 +652,7 @@
   function GBKDecoder(gb18030) {
     var gbk_first = 0x00, gbk_second = 0x00, gbk_third = 0x00;
     this.decode = function(byte_pointer, options) {
-      bite = byte_pointer.get();
+      var bite = byte_pointer.get();
       if (bite === eof && gbk_first === 0x00 && gbk_second === 0x00 && gbk_third === 0x00) {
         return eof;
       }
@@ -663,10 +663,11 @@
         decoderError(options.fatal);
       }
       byte_pointer.offset(1);
+      var code_point;
       if (gbk_third !== 0x00) {
         if (0x30 <= bite && bite <= 0x39) {
           // TODO: Spec incomplete
-          var code_point = gbkCodePoint();
+          code_point = gbkCodePoint();
           if (code_point !== null) {
             gbk_first = 0x00;
             gbk_second = 0x00;
@@ -697,7 +698,7 @@
         }
         if (0x40 <= bite && bite <= 0xFE) {
           // TODO: Spec incomplete
-          var code_point = gbkCodePooint();
+          code_point = gbkCodePoint();
           gbk_first = 0x00;
           return code_point;
         }
@@ -710,7 +711,7 @@
       if (bite === 0x80 && !gb18030) {
         return 0x20AC;
       }
-      if (0x81 <= bite && byte <= 0xFE) {
+      if (0x81 <= bite && bite <= 0xFE) {
         gbk_first = bite;
         return null;
       }
