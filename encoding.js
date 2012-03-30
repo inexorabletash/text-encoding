@@ -103,6 +103,12 @@
 
   /** @const */ var fallback_code_point = 0xFFFD;
 
+  /** @type {Array.<{name:string,
+   *                 labels:Array.<string>,
+   *                 getEncoder:function(),
+   *                 getDecoder:function(),
+   *                 encoding:Array.<number>
+   *               }>} */
   var codecs = [
     {
       name: 'binary',
@@ -1213,7 +1219,10 @@
 
   /** @const */ var DEFAULT_ENCODING = 'utf-8';
 
-  /** @constructor */
+  /**
+   * @constructor
+   * @param {string=} encoding
+   */
   function TextEncoder(encoding) {
     if (!this || this === global) {
       return new TextEncoder(encoding);
@@ -1260,7 +1269,10 @@
     { get: function () { return this._encoding.name; } });
 
 
-  /** @constructor */
+  /**
+   * @constructor
+   * @param {string=} encoding
+   */
   function TextDecoder(encoding) {
     if (!this || this === global) {
       return new TextDecoder(encoding);
