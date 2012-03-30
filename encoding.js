@@ -119,6 +119,26 @@
     },
 
     {
+      name: "gbk",
+      labels: ["chinese",
+               "csgb2312",
+               "csiso58gb231280",
+               "gb2312",
+               "gb_2312",
+               "gb_2312-80",
+               "gbk",
+               "iso-ir-58",
+               "x-gbk"],
+      getDecoder: function () { return new GBKDecoder(false); }
+    },
+
+    {
+      name: "gbk18030",
+      labels: ["gb18030"],
+      getDecoder: function () { return new GBKDecoder(true); }
+    },
+
+    {
       name: 'euc-jp',
       labels: ["cseucjpkdfmtjapanese",
                "euc-jp",
@@ -156,6 +176,13 @@
                "ksc_5601",
                "windows-949"],
       getDecoder: function () { return new EUCKRDecoder(); }
+    },
+
+    {
+      name: "iso-2022-kr",
+      labels: ["csiso2022kr",
+               "iso-2022-kr"],
+      getDecoder: function () { return new ISO2022KRDecoder(); }
     },
 
     {
@@ -613,6 +640,81 @@
         return decoderError(options.fatal);
       }
       return code_point;
+    };
+  }
+
+  // TODO: Add this table/function
+  function gbkCodePoint() {
+    return null;
+  }
+
+  /** @constructor */
+  function GBKDecoder(gb18030) {
+    var gbk_first = 0x00, gbk_second = 0x00, gbk_third = 0x00;
+    this.decode = function(byte_pointer, options) {
+      bite = byte_pointer.get();
+      if (bite === eof && gbk_first === 0x00 && gbk_second === 0x00 && gbk_third === 0x00) {
+        return eof;
+      }
+      if (bite === eof && (gbk_first !== 0x00 || gbk_second !== 0x00 || gbk_third !== 0x00)) {
+        gbk_first = 0x00;
+        gbk_second = 0x00;
+        gbk_third = 0x00;
+        decoderError(options.fatal);
+      }
+      byte_pointer.offset(1);
+      if (gbk_third !== 0x00) {
+        if (0x30 <= bite && bite <= 0x39) {
+          // TODO: Spec incomplete
+          var code_point = gbkCodePoint();
+          if (code_point !== null) {
+            gbk_first = 0x00;
+            gbk_second = 0x00;
+            gbk_third = 0x00;
+            return code_point;
+          }
+          byte_pointer.offset(-3);
+          gbk_first = 0x00;
+          gbk_second = 0x00;
+          gbk_third = 0x00;
+          return decoderError(options.fatal);
+        }
+      }
+      if (gbk_second !== 0x00) {
+        if (0x81 <= bite && bite <= 0xFE) {
+          gbk_second = bite;
+          return null;
+        }
+        byte_pointer.offset(-2);
+        gbk_first = 0x00;
+        gbk_second = 0x00;
+        return decoderError(options.fatal);
+      }
+      if (gbk_first !== 0x00) {
+        if (0x30 <= bite && bite <= 0x39 && gb18030) {
+          gbk_second = bite;
+          return null;
+        }
+        if (0x40 <= bite && bite <= 0xFE) {
+          // TODO: Spec incomplete
+          var code_point = gbkCodePooint();
+          gbk_first = 0x00;
+          return code_point;
+        }
+        gbk_first = 0x00;
+        return decoderError(options.fatal);
+      }
+      if (0x00 <= bite && bite <= 0x7F) {
+        return bite;
+      }
+      if (bite === 0x80 && !gb18030) {
+        return 0x20AC;
+      }
+      if (0x81 <= bite && byte <= 0xFE) {
+        gbk_first = bite;
+        return null;
+      }
+      return decoderError(options.fatal);
     };
   }
 
