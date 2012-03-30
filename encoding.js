@@ -617,16 +617,16 @@
   }
 
   // NOTE: prepend <script src="index-jis0208.js"></script> to enable
-  var jis0208Index = global.jis0208Index || {};
+  var jis0208Index = global.jis0208Index || [];
   // NOTE: prepend <script src="index-jis0212.js"></script> to enable
-  var jis0212Index = global.jis0212Index || {};
+  var jis0212Index = global.jis0212Index || [];
   function jis0208CodePoint(row, cell) {
     var location = row * 94 + cell;
-    return (location in jis0208Index) ? jis0208Index[location] : null;
+    return jis0208Index[location] || null;
   }
   function jis0212CodePoint(row, cell) {
     var location = row * 94 + cell;
-    return (location in jis0212Index) ? jis0212Index[location] : null;
+    return jis0212Index[location] || null;
   }
 
   /** @constructor */
@@ -887,9 +887,9 @@
   }
 
   // NOTE: prepend <script src="index-euc-kr.js"></script> to enable
-  var euckrIndex = global.euckrIndex || {};
+  var euckrIndex = global.euckrIndex || [];
   function euckrCodePoint(index) {
-    return (index in euckrIndex) ? euckrIndex[index] : null;
+    return euckrIndex[index] || null;
   }
 
   /** @constructor */
