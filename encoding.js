@@ -63,7 +63,7 @@
         } else if (0xDC00 <= c && c <= 0xDFFF) {
           i += 1;
           return fallback_code_point;
-        } else { // (c <= 0xD800 && c <= 0xDBFF)
+        } else { // (0xD800 <= c && c <= 0xDBFF)
           if (i === n - 1) {
             i += 1;
             return fallback_code_point;
@@ -528,7 +528,10 @@
   }
 
   // Generic Encoders/Decoders for single byte encodings, using maps
-  /** @constructor */
+  /**
+   * @constructor
+   * @param {Array.<number>} map
+   */
   function SingleByteEncoder(map) {
     this.encode = function (output_byte_stream, input_code_point_stream, options) {
       var code_point = input_code_point_stream.read();
@@ -546,7 +549,11 @@
       }
     };
   }
-  /** @constructor */
+
+  /**
+   * @constructor
+   * @param {Array.<number>} map
+   */
   function SingleByteDecoder(map) {
     this.decode = function (byte_pointer, options) {
       var bite = byte_pointer.get();
@@ -656,6 +663,7 @@
   }
 
   // TODO: Add this table/function
+  /** @return {?number} */
   function gbkCodePoint() {
     return null;
   }
@@ -799,12 +807,15 @@
 
   // NOTE: prepend <script src="index-jis0208.js"></script> to enable
   var jis0208Index = global['jis0208Index'] || [];
-  // NOTE: prepend <script src="index-jis0212.js"></script> to enable
-  var jis0212Index = global['jis0212Index'] || [];
+  /** @return {?number} */
   function jis0208CodePoint(row, cell) {
     var location = row * 94 + cell;
     return jis0208Index[location] || null;
   }
+
+  // NOTE: prepend <script src="index-jis0212.js"></script> to enable
+  var jis0212Index = global['jis0212Index'] || [];
+  /** @return {?number} */
   function jis0212CodePoint(row, cell) {
     var location = row * 94 + cell;
     return jis0212Index[location] || null;
@@ -879,9 +890,19 @@
 
   /** @constructor */
   function ISO2022JPDecoder() {
-    var iso2022jp_state = "ASCII",
-        iso2022jp_jis0212 = false,
-        iso2022jp_lead = 0x00;
+    /** @enum */
+    var state = {
+      ASCII: 0,
+      escape_start: 1,
+      escape_middle: 2,
+      escape_final: 3,
+      lead: 4,
+      trail: 5,
+      Katakana: 6
+    };
+    var /** @type {number} */ iso2022jp_state = state.ASCII,
+        /** @type {boolean} */ iso2022jp_jis0212 = false,
+        /** @type {number} */ iso2022jp_lead = 0x00;
     this.decode = function(byte_pointer, options) {
       var bite = byte_pointer.get();
       if (bite !== eof) {
@@ -889,9 +910,9 @@
       }
       switch (iso2022jp_state) {
       default:
-      case "ASCII":
+      case state.ASCII:
         if (bite === 0x1B) {
-          iso2022jp_state = "escape start";
+          iso2022jp_state = state.escape_start;
           return null;
         }
         if (0x00 <= bite && bite <= 0x7E) {
@@ -902,36 +923,36 @@
         }
         return decoderError(options.fatal);
 
-      case "escape start":
+      case state.escape_start:
         if (bite === 0x24 || bite === 0x28) {
           iso2022jp_lead = bite;
-          iso2022jp_state = "escape middle";
+          iso2022jp_state = state.escape_middle;
           return null;
         }
         if (bite != eof) {
           byte_pointer.offset(-1);
         }
-        iso2022jp_state = "ASCII";
+        iso2022jp_state = state.ASCII;
         return decoderError(options.fatal);
 
-      case "escape middle":
+      case state.escape_middle:
         var lead = iso2022jp_lead;
         iso2022jp_lead = 0x00;
         if (lead === 0x24 && (bite === 0x40 || bite === 0x42)) {
           iso2022jp_jis0212 = false;
-          iso2022jp_state = "lead";
+          iso2022jp_state = state.lead;
           return null;
         }
         if (lead === 0x24 && bite === 0x28) {
-          iso2022jp_state = "escape final";
+          iso2022jp_state = state.escape_final;
           return null;
         }
         if (lead === 0x28 && (bite === 0x42 || bite === 0x4A)) {
-          iso2022jp_state = "ASCII";
+          iso2022jp_state = state.ASCII;
           return null;
         }
         if (lead === 0x28 && bite === 0x49) {
-          iso2022jp_state = "Katakana";
+          iso2022jp_state = state.Katakana;
           return null;
         }
         if (bite === eof) {
@@ -939,13 +960,13 @@
         } else {
           byte_pointer.offset(-2);
         }
-        iso2022jp_state = "ASCII";
+        iso2022jp_state = state.ASCII;
         return decoderError(options.fatal);
 
-      case "escape final":
+      case state.escape_final:
         if (bite === 0x44) {
           iso2022jp_jis0212 = true;
-          iso2022jp_state = "lead";
+          iso2022jp_state = state.lead;
           return null;
         }
         if (bite === eof) {
@@ -953,27 +974,27 @@
         } else {
           byte_pointer.offset(-3);
         }
-        iso2022jp_state = "ASCII";
+        iso2022jp_state = state.ASCII;
         return decoderError(options.fatal);
 
-      case "lead":
+      case state.lead:
         if (bite === 0x0A) {
-          iso2022jp_state = "ASCII";
+          iso2022jp_state = state.ASCII;
           return decoderError(options.fatal, 0x000A);
         }
         if (bite === 0x1B) {
-          iso2022jp_state = "escape";
+          iso2022jp_state = state.escape_start;
           return null;
         }
         if (bite === eof) {
           return eof;
         }
         iso2022jp_lead = bite;
-        iso2022jp_state = "trail";
+        iso2022jp_state = state.trail;
         return null;
 
-      case "trail":
-        iso2022jp_state = lead;
+      case state.trail:
+        iso2022jp_state = state.lead;
         if (bite === eof) {
           return decoderError(options.fatal);
         }
@@ -991,9 +1012,9 @@
         }
         return code_point;
 
-      case "Katakana":
+      case state.Katakana:
         if (bite === 0x1B) {
-          iso2022jp_state = "escape";
+          iso2022jp_state = state.escape_start;
           return null;
         }
         if (0x21 <= bite && bite <= 0x5F) {
@@ -1069,6 +1090,7 @@
 
   // NOTE: prepend <script src="index-euc-kr.js"></script> to enable
   var euckrIndex = global['euckrIndex'] || [];
+  /** @return {?number} */
   function euckrCodePoint(index) {
     return euckrIndex[index] || null;
   }
@@ -1131,8 +1153,14 @@
 
     /** @constructor */
   function ISO2022KRDecoder() {
-    var iso2022kr_state = "ASCII",
-        iso2022kr_lead = 0x00;
+    /** @enum */
+    var state = {
+      ASCII: 0,
+      lead: 1,
+      trail: 2
+    };
+    var /** @type {number} */ iso2022kr_state = state.ASCII,
+        /** @type {number} */ iso2022kr_lead = 0x00;
     this.decode = function(byte_pointer, options) {
       var bite = byte_pointer.get();
       if (bite !== eof) {
@@ -1140,9 +1168,9 @@
       }
       switch (iso2022kr_state) {
       default:
-      case "ASCII":
+      case state.ASCII:
         if (bite === 0x0E) {
-          iso2022kr_state = "lead";
+          iso2022kr_state = state.lead;
           return null;
         } else if (bite === 0x0F) {
           return null;
@@ -1153,24 +1181,24 @@
         } else {
           return decoderError(options.fatal);
         }
-      case "lead":
+      case state.lead:
         if (bite === 0x0A) {
-          iso2022kr_state = "ASCII";
+          iso2022kr_state = state.ASCII;
           return decoderError(options.fatal, 0x000A);
         } else if (bite === 0x0E) {
           return null;
         } else if (bite === 0x0F) {
-          iso2022kr_state = "ASCII";
+          iso2022kr_state = state.ASCII;
           return null;
         } else if (bite === eof) {
           return eof;
         } else {
           iso2022kr_lead = bite;
-          iso2022kr_state = "trail";
+          iso2022kr_state = state.trail;
           return null;
         }
-      case "trail":
-        iso2022kr_state = "lead";
+      case state.trail:
+        iso2022kr_state = state.lead;
         if (bite === eof) {
           return decoderError(options.fatal);
         }
@@ -1342,6 +1370,6 @@
   Object.defineProperty(TextDecoder.prototype, 'encoding',
     { get: function () { return this._encoding.name; } });
 
-  global.TextEncoder = global.TextEncoder || TextEncoder;
-  global.TextDecoder = global.TextDecoder || TextDecoder;
+  global['TextEncoder'] = global['TextEncoder'] || TextEncoder;
+  global['TextDecoder'] = global['TextDecoder'] || TextDecoder;
 }(this));
