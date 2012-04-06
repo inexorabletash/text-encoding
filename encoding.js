@@ -151,6 +151,16 @@
     },
 
     {
+      name: "big5",
+      labels: ["big5",
+               "big5-hkscs",
+               "cn-big5",
+               "csbig5",
+               "x-x-big5"],
+      getDecoder: function (options) { return new Big5Decoder(options); }
+    },
+
+    {
       name: 'euc-jp',
       labels: ["cseucjpkdfmtjapanese",
                "euc-jp",
@@ -817,6 +827,82 @@
       }
       if (0x00 <= bite && bite <= 0x7F) {
         return bite;
+      }
+      return decoderError(fatal);
+    };
+  }
+
+  // NOTE: prepend <script src="index-big5.js"></script> to enable
+  var big5Index = global['big5Index'] || [];
+  /** @return {?number} */
+  function big5CodePoint(index) {
+    return big5Index[location] || null;
+  }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function Big5Decoder(options) {
+    var fatal = options.fatal;
+    var /** @type {number} */ big5_lead = 0x00,
+        /** @type {?number} */ big5_pending = null;
+
+    this.decode = function(byte_pointer) {
+      if (big5_pending !== null) {
+        var pending = big5_pending;
+        big5_pending = null;
+        return pending;
+      }
+      var bite = byte_pointer.get();
+      if (bite === eof && big5_lead === 0x00) {
+        return eof;
+      }
+      if (bite === eof && big5_lead !== 0x00) {
+        big5_lead = 0x00;
+        return decoderError(fatal);
+      }
+      byte_pointer.offset(1);
+      if (big5_lead !== 0x00) {
+        var lead = big5_lead;
+        var index = null;
+        big5_lead = 0x00;
+        if (lead === 0x88 && bite === 0x62) {
+          big5_pending = 0x0304;
+          return 0x00CA;
+        }
+        if (lead === 0x88 && bite === 0x64) {
+          big5_pending = 0x030C;
+          return 0x00CA;
+        }
+        if (lead === 0x88 && bite === 0xA3) {
+          big5_pending = 0x0304;
+          return 0x00EA;
+        }
+        if (lead === 0x88 && bite === 0xA5) {
+          big5_pending = 0x030C;
+          return 0x00EA;
+        }
+        var offset = (bite > 0x7F) ? 0x62 : 0x40;
+        if (0x40 <= bite && bite <= 0x7E ||
+            0xA1 <= bite && bite <= 0xFE) {
+          index = (lead - 0x81) * 157 + (bite - offset);
+        }
+        var code_point = (index === null) ? null : big5CodePoint(index);
+        if (index === null) {
+          byte_pointer.offset(-1);
+        }
+        if (code_point === null) {
+          return decoderError(fatal);
+        }
+        return code_point;
+      }
+      if (0x00 <= bite && bite <= 0x7F) {
+        return bite;
+      }
+      if (0x81 <= bite && bite <= 0xFE) {
+        big5_lead = bite;
+        return null;
       }
       return decoderError(fatal);
     };
