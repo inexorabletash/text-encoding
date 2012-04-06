@@ -906,7 +906,7 @@
       }
       if (eucjp_first === 0x8E && 0xA1 <= bite && bite <= 0xDF) {
         eucjp_first = 0x00;
-        return 0xFEC0 + bite;
+        return 0xFF61 - 0xA1 + bite;
       }
       if (eucjp_first === 0x8F && 0xA1 <= bite && bite <= 0xFE) {
         eucjp_first = 0x00;
@@ -1073,7 +1073,7 @@
           return null;
         }
         if (0x21 <= bite && bite <= 0x5F) {
-          return 0xFF40 + bite;
+          return 0xFF61 - 0x21 + bite;
         }
         if (bite === eof) {
           return eof;
@@ -1133,7 +1133,7 @@
         return 0xF8F0;
       }
       if (0xA1 <= bite && bite <= 0xDF) {
-        return 0xFEC0 + bite;
+        return 0xFF61 - 0xA1 + bite;
       }
       if (0xFD <= bite && bite <= 0xFF) {
         return 0xF7F4 + bite;
