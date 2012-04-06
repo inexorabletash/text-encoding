@@ -105,23 +105,23 @@
 
   /** @type {Array.<{name:string,
    *                 labels:Array.<string>,
-   *                 getEncoder:function(),
-   *                 getDecoder:function(),
+   *                 getEncoder:function({fatal:boolean}),
+   *                 getDecoder:function({fatal:boolean}),
    *                 encoding:Array.<number>
    *               }>} */
   var codecs = [
     {
       name: 'binary',
       labels: ['binary'],
-      getEncoder: function () { return new BinaryEncoder(); },
-      getDecoder: function () { return new BinaryDecoder(); }
+      getEncoder: function (options) { return new BinaryEncoder(options); },
+      getDecoder: function (options) { return new BinaryDecoder(options); }
     },
 
     {
       name: 'utf-8',
       labels: ['utf-8'],
-      getEncoder: function () { return new UTF8Encoder(); },
-      getDecoder: function () { return new UTF8Decoder(); }
+      getEncoder: function (options) { return new UTF8Encoder(options); },
+      getDecoder: function (options) { return new UTF8Decoder(options); }
     },
 
     {
@@ -135,19 +135,19 @@
                "gbk",
                "iso-ir-58",
                "x-gbk"],
-      getDecoder: function () { return new GBKDecoder(false); }
+      getDecoder: function (options) { return new GBKDecoder(false, options); }
     },
 
     {
       name: "gbk18030",
       labels: ["gb18030"],
-      getDecoder: function () { return new GBKDecoder(true); }
+      getDecoder: function (options) { return new GBKDecoder(true, options); }
     },
 
     {
       name: "hz-gb-2312",
       labels: ["hz-gb-2312"],
-      getDecoder: function () { return new HZGB2312Decoder(); }
+      getDecoder: function (options) { return new HZGB2312Decoder(options); }
     },
 
     {
@@ -155,14 +155,14 @@
       labels: ["cseucjpkdfmtjapanese",
                "euc-jp",
                "x-euc-jp"],
-      getDecoder: function () { return new EUCJPDecoder(); }
+      getDecoder: function (options) { return new EUCJPDecoder(options); }
     },
 
     {
       name: "iso-2022-jp",
       labels: ["csiso2022jp",
                "iso-2022-jp"],
-      getDecoder: function () { return new ISO2022JPDecoder(); }
+      getDecoder: function (options) { return new ISO2022JPDecoder(options); }
     },
 
     {
@@ -173,7 +173,7 @@
                "shift_jis",
                "windows-31j",
                "x-sjis"],
-      getDecoder: function () { return new ShiftJISDecoder(); }
+      getDecoder: function (options) { return new ShiftJISDecoder(options); }
     },
 
     {
@@ -187,28 +187,28 @@
                "ksc5601",
                "ksc_5601",
                "windows-949"],
-      getDecoder: function () { return new EUCKRDecoder(); }
+      getDecoder: function (options) { return new EUCKRDecoder(options); }
     },
 
     {
       name: "iso-2022-kr",
       labels: ["csiso2022kr",
                "iso-2022-kr"],
-      getDecoder: function () { return new ISO2022KRDecoder(); }
+      getDecoder: function (options) { return new ISO2022KRDecoder(options); }
     },
 
     {
       name: 'utf-16le',
       labels: ['utf-16le', 'utf-16'],
-      getEncoder: function () { return new UTF16Encoder(false); },
-      getDecoder: function () { return new UTF16Decoder(false); }
+      getEncoder: function (options) { return new UTF16Encoder(false, options); },
+      getDecoder: function (options) { return new UTF16Decoder(false, options); }
     },
 
     {
       name: 'utf-16be',
       labels: ['utf-16be'],
-      getEncoder: function () { return new UTF16Encoder(true); },
-      getDecoder: function () { return new UTF16Decoder(true); }
+      getEncoder: function (options) { return new UTF16Encoder(true, options); },
+      getDecoder: function (options) { return new UTF16Decoder(true, options); }
     },
 
     // From: http://dvcs.w3.org/hg/encoding/raw-file/tip/single-byte-encodings.json
@@ -385,9 +385,13 @@
     }
   ];
 
-  /** @constructor */
-  function BinaryEncoder() {
-    this.encode = function (output_byte_stream, input_code_point_stream, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function BinaryEncoder(options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, input_code_point_stream) {
       var code_point = input_code_point_stream.read();
       if (code_point === eof) {
         return;
@@ -399,9 +403,13 @@
     };
   }
 
-  /** @constructor */
-  function BinaryDecoder() {
-    this.decode = function (byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function BinaryDecoder(options) {
+    var fatal = options.fatal;
+    this.decode = function (byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof) {
         return eof;
@@ -411,9 +419,13 @@
     };
   }
 
-  /** @constructor */
-  function UTF8Encoder() {
-    this.encode = function (output_byte_stream, input_code_point_stream, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function UTF8Encoder(options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, input_code_point_stream) {
       var code_point = input_code_point_stream.read();
       if (code_point === eof) {
         return;
@@ -448,6 +460,7 @@
   /**
    * @param {boolean} fatal
    * @param {number=} opt_code_point
+   * @return {number}
    */
   function decoderError(fatal, opt_code_point) {
     if (fatal) {
@@ -456,15 +469,21 @@
     return opt_code_point || fallback_code_point;
   }
 
-  /** @constructor */
-  function UTF8Decoder() {
-    var utf8_code_point = 0, utf8_bytes_needed = 0, utf8_bytes_seen = 0,
-        utf8_lower_boundary = 0;
-    this.decode = function (byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function UTF8Decoder(options) {
+    var fatal = options.fatal;
+    var /** @type {number} */ utf8_code_point = 0,
+        /** @type {number} */ utf8_bytes_needed = 0,
+        /** @type {number} */ utf8_bytes_seen = 0,
+        /** @type {number} */ utf8_lower_boundary = 0;
+    this.decode = function (byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof) {
         if (utf8_bytes_needed !== 0) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         return eof;
       }
@@ -494,7 +513,7 @@
           utf8_lower_boundary = 0x4000000;
           utf8_code_point = bite - 0xFC;
         } else {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         utf8_code_point = utf8_code_point * Math.pow(64, utf8_bytes_needed);
         return null;
@@ -505,7 +524,7 @@
         utf8_bytes_seen = 0;
         utf8_lower_boundary = 0;
         byte_pointer.offset(-1);
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       utf8_bytes_seen += 1;
       utf8_code_point = utf8_code_point + (bite - 0x80) * Math.pow(64, utf8_bytes_needed - utf8_bytes_seen);
@@ -523,7 +542,7 @@
           (code_point < 0XD800 || code_point > 0xDFFF)) {
         return code_point;
       }
-      return decoderError(options.fatal);
+      return decoderError(fatal);
     };
   }
 
@@ -531,9 +550,11 @@
   /**
    * @constructor
    * @param {Array.<number>} map
+   * @param {{fatal: boolean}} options
    */
-  function SingleByteEncoder(map) {
-    this.encode = function (output_byte_stream, input_code_point_stream, options) {
+  function SingleByteEncoder(map, options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, input_code_point_stream) {
       var code_point = input_code_point_stream.read();
         if (code_point === eof) {
           return;
@@ -553,9 +574,11 @@
   /**
    * @constructor
    * @param {Array.<number>} map
+   * @param {{fatal: boolean}} options
    */
-  function SingleByteDecoder(map) {
-    this.decode = function (byte_pointer, options) {
+  function SingleByteDecoder(map, options) {
+    var fatal = options.fatal;
+    this.decode = function (byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof) {
         return eof;
@@ -566,7 +589,7 @@
       } else {
         var code_point = map[bite - 128];
         if (code_point === null) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         } else {
           return code_point;
         }
@@ -579,16 +602,21 @@
     for (i = 0; i < codecs.length; ++i) {
       if (codecs[i].encoding) {
         (function (map) {
-          codecs[i].getEncoder = function () { return new SingleByteEncoder(map); };
-          codecs[i].getDecoder = function () { return new SingleByteDecoder(map); };
+          codecs[i].getEncoder = function (options) { return new SingleByteEncoder(map, options); };
+          codecs[i].getDecoder = function (options) { return new SingleByteDecoder(map, options); };
         }(codecs[i].encoding));
       }
     }
   }());
 
-  /** @constructor */
-  function UTF16Encoder(utf16_be) {
-    this.encode = function(output_byte_stream, input_code_point_stream, options) {
+  /**
+   * @constructor
+   * @param {boolean} utf16_be
+   * @param {{fatal: boolean}} options
+   */
+  function UTF16Encoder(utf16_be, options) {
+    var fatal = options.fatal;
+    this.encode = function(output_byte_stream, input_code_point_stream) {
       function convert_to_bytes(code_unit) {
         var byte1 = code_unit >> 8;
         var byte2 = code_unit & 0xFF;
@@ -618,14 +646,20 @@
     };
   }
 
-  /** @constructor */
-  function UTF16Decoder(utf16_be) {
-    var utf16_lead_byte = null, utf16_lead_surrogate = null;
-    this.decode = function(byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {boolean} utf16_be
+   * @param {{fatal: boolean}} options
+   */
+  function UTF16Decoder(utf16_be, options) {
+    var fatal = options.fatal;
+    var /** @type {?number} */ utf16_lead_byte = null,
+        /** @type {?number} */ utf16_lead_surrogate = null;
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof) {
         if (utf16_lead_byte || utf16_lead_surrogate) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         return eof;
       }
@@ -648,7 +682,7 @@
           return 0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00);
         } else {
           byte_pointer.offset(-2);
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
       }
       if (0xD800 <= code_point && code_point <= 0xDBFF) {
@@ -656,7 +690,7 @@
         return null;
       }
       if (0xDC00 <= code_point && code_point <= 0xDFFF) {
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       return code_point;
     };
@@ -668,10 +702,17 @@
     return null;
   }
 
-  /** @constructor */
-  function GBKDecoder(gb18030) {
-    var gbk_first = 0x00, gbk_second = 0x00, gbk_third = 0x00;
-    this.decode = function(byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {boolean} gb18030
+   * @param {{fatal: boolean}} options
+   */
+  function GBKDecoder(gb18030, options) {
+    var fatal = options.fatal;
+    var /** @type {number} */ gbk_first = 0x00,
+        /** @type {number} */ gbk_second = 0x00,
+        /** @type {number} */ gbk_third = 0x00;
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof && gbk_first === 0x00 && gbk_second === 0x00 && gbk_third === 0x00) {
         return eof;
@@ -680,7 +721,7 @@
         gbk_first = 0x00;
         gbk_second = 0x00;
         gbk_third = 0x00;
-        decoderError(options.fatal);
+        decoderError(fatal);
       }
       byte_pointer.offset(1);
       var code_point;
@@ -698,7 +739,7 @@
           gbk_first = 0x00;
           gbk_second = 0x00;
           gbk_third = 0x00;
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
       }
       if (gbk_second !== 0x00) {
@@ -709,7 +750,7 @@
         byte_pointer.offset(-2);
         gbk_first = 0x00;
         gbk_second = 0x00;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       if (gbk_first !== 0x00) {
         if (0x30 <= bite && bite <= 0x39 && gb18030) {
@@ -723,7 +764,7 @@
           return code_point;
         }
         gbk_first = 0x00;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       if (0x00 <= bite && bite <= 0x7F) {
         return bite;
@@ -735,21 +776,26 @@
         gbk_first = bite;
         return null;
       }
-      return decoderError(options.fatal);
+      return decoderError(fatal);
     };
   }
 
-  /** @constructor */
-  function HZGB2312Decoder() {
-    var hzgb2312 = false, hzgb2312_lead = 0x00;
-    this.decode = function(byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function HZGB2312Decoder(options) {
+    var fatal = options.fatal;
+    var /** @type {boolean} */ hzgb2312 = false,
+        /** @type {number} */ hzgb2312_lead = 0x00;
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof && hzgb2312_lead === 0x00) {
         return eof;
       }
       if (bite === eof && hzgb2312_lead !== 0x00) {
         hzgb2312_lead = 0x00;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       byte_pointer.offset(1);
       if (hzgb2312_lead === 0x7E) {
@@ -770,7 +816,7 @@
           return null;
         }
         byte_pointer.offset(-1);
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       if (hzgb2312_lead !== 0x00) {
         hzgb2312_lead = 0x00;
@@ -782,7 +828,7 @@
         if (bite === 0x0A) {
           hzgb2312 = false;
         }
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       if (bite === 0x7E) {
         hzgb2312_lead = 0x7E;
@@ -796,12 +842,12 @@
         if (bite === 0x0A) {
           hzgb2312 = false;
         }
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       if (0x00 <= bite && bite <= 0x7F) {
         return bite;
       }
-      return decoderError(options.fatal);
+      return decoderError(fatal);
     };
   }
 
@@ -821,10 +867,15 @@
     return jis0212Index[location] || null;
   }
 
-  /** @constructor */
-  function EUCJPDecoder() {
-    var eucjp_first = 0x00, eucjp_second = 0x00;
-    this.decode = function(byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function EUCJPDecoder(options) {
+    var fatal = options.fatal;
+    var /** @type {number} */ eucjp_first = 0x00,
+        /** @type {number} */ eucjp_second = 0x00;
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof) {
         if (eucjp_first === 0x00 && eucjp_second === 0x00) {
@@ -832,7 +883,7 @@
         } else {
           eucjp_first = 0x00;
           eucjp_second = 0x00;
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
       }
       byte_pointer.offset(1);
@@ -849,7 +900,7 @@
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         return code_point;
       }
@@ -873,7 +924,7 @@
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         return code_point;
       }
@@ -884,12 +935,16 @@
         eucjp_first = bite;
         return null;
       }
-      return decoderError(options.fatal);
+      return decoderError(fatal);
     };
   }
 
-  /** @constructor */
-  function ISO2022JPDecoder() {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function ISO2022JPDecoder(options) {
+    var fatal = options.fatal;
     /** @enum */
     var state = {
       ASCII: 0,
@@ -903,7 +958,7 @@
     var /** @type {number} */ iso2022jp_state = state.ASCII,
         /** @type {boolean} */ iso2022jp_jis0212 = false,
         /** @type {number} */ iso2022jp_lead = 0x00;
-    this.decode = function(byte_pointer, options) {
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite !== eof) {
         byte_pointer.offset(1);
@@ -921,7 +976,7 @@
         if (bite === eof) {
           return eof;
         }
-        return decoderError(options.fatal);
+        return decoderError(fatal);
 
       case state.escape_start:
         if (bite === 0x24 || bite === 0x28) {
@@ -933,7 +988,7 @@
           byte_pointer.offset(-1);
         }
         iso2022jp_state = state.ASCII;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
 
       case state.escape_middle:
         var lead = iso2022jp_lead;
@@ -961,7 +1016,7 @@
           byte_pointer.offset(-2);
         }
         iso2022jp_state = state.ASCII;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
 
       case state.escape_final:
         if (bite === 0x44) {
@@ -975,12 +1030,12 @@
           byte_pointer.offset(-3);
         }
         iso2022jp_state = state.ASCII;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
 
       case state.lead:
         if (bite === 0x0A) {
           iso2022jp_state = state.ASCII;
-          return decoderError(options.fatal, 0x000A);
+          return decoderError(fatal, 0x000A);
         }
         if (bite === 0x1B) {
           iso2022jp_state = state.escape_start;
@@ -996,7 +1051,7 @@
       case state.trail:
         iso2022jp_state = state.lead;
         if (bite === eof) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         var code_point = null;
         if (0x21 <= iso2022jp_lead && iso2022jp_lead <= 0x7E &&
@@ -1008,7 +1063,7 @@
           }
         }
         if (code_point === null) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         return code_point;
 
@@ -1023,23 +1078,27 @@
         if (bite === eof) {
           return eof;
         }
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
     };
   }
 
-  /** @constructor */
-  function ShiftJISDecoder() {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function ShiftJISDecoder(options) {
+    var fatal = options.fatal;
     /** @const */ var shiftjis_fallback_code_point = 0x30FB;
-    var shiftjis_lead = 0x00;
-    this.decode = function(byte_pointer, options) {
+    var /** @type{number} */ shiftjis_lead = 0x00;
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof && shiftjis_lead === 0) {
         return eof;
       }
       if (bite === eof && shiftjis_lead !== 0) {
         shiftjis_lead = 0x00;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       byte_pointer.offset(1);
       if (shiftjis_lead !== 0x00) {
@@ -1048,7 +1107,7 @@
         if ((0x40 <= bite && bite <= 0x7E) || (0x80 <= bite && bite <= 0xFC)) {
           var offset = (bite < 0x7F) ? 64 : 65;
           if (0xF0 <= lead && lead <= 0xF9) {
-            return decoderError(options.fatal,
+            return decoderError(fatal,
                                 0xE000 + (lead - 0xF0) * 188 + bite - offset);
           }
           var adjust = (bite < 0x9F) ? 1 : 0;
@@ -1060,12 +1119,12 @@
           row = row - adjust - 33;
           var code_point = jis0208CodePoint(row, bite - offset);
           if (code_point === null) {
-            return decoderError(options.fatal, shiftjis_fallback_code_point);
+            return decoderError(fatal, shiftjis_fallback_code_point);
           }
           return code_point;
         }
         byte_pointer.offset(-1);
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       if (0x00 <= bite && bite <= 0x80) {
         return bite;
@@ -1084,7 +1143,7 @@
         shiftjis_lead  = bite;
         return null;
       }
-      return decoderError(options.fatal);
+      return decoderError(fatal);
     };
   }
 
@@ -1095,17 +1154,21 @@
     return euckrIndex[index] || null;
   }
 
-  /** @constructor */
-  function EUCKRDecoder() {
-    var euckr_lead = 0x00;
-    this.decode = function(byte_pointer, options) {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function EUCKRDecoder(options) {
+    var fatal = options.fatal;
+    var /** @type {number} */ euckr_lead = 0x00;
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === eof && euckr_lead === 0) {
         return eof;
       }
       if (bite === eof && euckr_lead !== 0) {
         euckr_lead = 0x00;
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
       byte_pointer.offset(1);
       if (euckr_lead !== 0x00) {
@@ -1133,7 +1196,7 @@
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         return code_point;
       }
@@ -1147,12 +1210,16 @@
         return null;
       }
 
-      return decoderError(options.fatal);
+      return decoderError(fatal);
     };
   }
 
-    /** @constructor */
-  function ISO2022KRDecoder() {
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function ISO2022KRDecoder(options) {
+    var fatal = options.fatal;
     /** @enum */
     var state = {
       ASCII: 0,
@@ -1161,7 +1228,7 @@
     };
     var /** @type {number} */ iso2022kr_state = state.ASCII,
         /** @type {number} */ iso2022kr_lead = 0x00;
-    this.decode = function(byte_pointer, options) {
+    this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite !== eof) {
         byte_pointer.offset(1);
@@ -1179,12 +1246,12 @@
         } else if (bite === eof) {
           return eof;
         } else {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
       case state.lead:
         if (bite === 0x0A) {
           iso2022kr_state = state.ASCII;
-          return decoderError(options.fatal, 0x000A);
+          return decoderError(fatal, 0x000A);
         } else if (bite === 0x0E) {
           return null;
         } else if (bite === 0x0F) {
@@ -1200,7 +1267,7 @@
       case state.trail:
         iso2022kr_state = state.lead;
         if (bite === eof) {
-          return decoderError(options.fatal);
+          return decoderError(fatal);
         }
         var code_point = null;
         if (0x21 <= iso2022kr_lead && iso2022kr_lead <= 0x46 &&
@@ -1213,7 +1280,7 @@
         if (code_point !== null) {
           return code_point;
         }
-        return decoderError(options.fatal);
+        return decoderError(fatal);
       }
     };
   }
@@ -1250,15 +1317,18 @@
   /**
    * @constructor
    * @param {string=} encoding
+   * @param {{fatal: boolean}=} options
    */
-  function TextEncoder(encoding) {
+  function TextEncoder(encoding, options) {
     if (!this || this === global) {
-      return new TextEncoder(encoding);
+      return new TextEncoder(encoding, options);
     }
     encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
+    options = Object(options);
     this._encoding = getEncoding(encoding); // may throw
     this._streaming = false;
     this._encoder = null;
+    this._options = { fatal: Boolean(options.fatal) };
     return this;
   }
 
@@ -1272,7 +1342,7 @@
       options = Object(options);
 
       if (!this._streaming) {
-        this._encoder = this._encoding.getEncoder();
+        this._encoder = this._encoding.getEncoder(this._options);
       }
       this._streaming = Boolean(options.stream);
 
@@ -1300,15 +1370,18 @@
   /**
    * @constructor
    * @param {string=} encoding
+   * @param {{fatal: boolean}=} options
    */
-  function TextDecoder(encoding) {
+  function TextDecoder(encoding, options) {
     if (!this || this === global) {
-      return new TextDecoder(encoding);
+      return new TextDecoder(encoding, options);
     }
     encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
+    options = Object(options);
     this._encoding = getEncoding(encoding); // may throw
     this._streaming = false;
     this._decoder = null;
+    this._options = { fatal: Boolean(options.fatal) };
     return this;
   }
 
@@ -1318,10 +1391,9 @@
   TextDecoder.prototype = {
     /**
      * @param {ArrayBufferView=} view
-     * @param {{fatal: boolean, stream: boolean}=} options
+     * @param {{stream: boolean}=} options
      */
     decode: function decode(view, options) {
-
       if (view && !('buffer' in view && 'byteOffset' in view && 'byteLength' in view)) {
         throw new TypeError('Expected ArrayBufferView');
       } else if (!view) {
@@ -1330,7 +1402,7 @@
       options = Object(options);
 
       if (!this._streaming) {
-        this._decoder = this._encoding.getDecoder();
+        this._decoder = this._encoding.getDecoder(this._options);
       }
       this._streaming = Boolean(options.stream);
 
@@ -1346,19 +1418,15 @@
 
       var output_stream = CodePointOutputStream(), code_point;
       while (input_stream.get() !== eof) {
-        code_point = this._decoder.decode(input_stream, {
-          fatal: Boolean(options.fatal)
-        });
-        if (code_point !== null && code_point !== undefined && code_point !== eof) {
+        code_point = this._decoder.decode(input_stream);
+        if (code_point !== null && code_point !== eof) {
           output_stream.emit(code_point);
         }
       }
       if (!this._streaming) {
         do {
-          code_point = this._decoder.decode(input_stream, {
-            fatal: Boolean(options.fatal)
-          });
-          if (code_point !== null && code_point !== undefined && code_point !== eof) {
+          code_point = this._decoder.decode(input_stream);
+          if (code_point !== null && code_point !== eof) {
             output_stream.emit(code_point);
           }
         } while (code_point !== eof);
