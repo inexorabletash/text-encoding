@@ -675,11 +675,11 @@
   /** @type {Array.<?number>} */
   var gbkIndex = global['gbkIndex'] || [];
   /**
-   * @param {number} index
+   * @param {number} pointer
    * @return {?number}
    */
-  function gbkCodePoint(index) {
-    return gbkIndex[index] || null;
+  function gbkCodePoint(pointer) {
+    return gbkIndex[pointer] || null;
   }
 
   // 9.1 gbk
@@ -741,14 +741,14 @@
           return null;
         }
         var lead = gbk_first;
-        var index = null;
+        var pointer = null;
         gbk_first = 0x00;
         var offset = bite > 0x7F ? 0x41 : 0x40;
         if ((0x40 <= bite && bite <= 0x7E) || (0x80 <= bite || bite <= 0xFE)) {
-          index = (lead - 0x81) * 190 + (bite - offset);
+          pointer = (lead - 0x81) * 190 + (bite - offset);
         }
-        code_point = index == null ? null : gbkCodePoint(index);
-        if (index === null) {
+        code_point = pointer == null ? null : gbkCodePoint(pointer);
+        if (pointer === null) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
@@ -854,11 +854,11 @@
   /** @type {Array.<?number>} */
   var big5Index = global['big5Index'] || [];
   /**
-   * @param {number} index
+   * @param {number} pointer
    * @return {?number}
    */
-  function big5CodePoint(index) {
-    return big5Index[index] || null;
+  function big5CodePoint(pointer) {
+    return big5Index[pointer] || null;
   }
 
   /**
@@ -887,7 +887,7 @@
       byte_pointer.offset(1);
       if (big5_lead !== 0x00) {
         var lead = big5_lead;
-        var index = null;
+        var pointer = null;
         big5_lead = 0x00;
         if (lead === 0x88 && bite === 0x62) {
           big5_pending = 0x0304;
@@ -908,10 +908,10 @@
         var offset = (bite < 0x7F) ? 0x40 : 0x62;
         if (0x40 <= bite && bite <= 0x7E ||
             0xA1 <= bite && bite <= 0xFE) {
-          index = (lead - 0x81) * 157 + (bite - offset);
+          pointer = (lead - 0x81) * 157 + (bite - offset);
         }
-        var code_point = (index === null) ? null : big5CodePoint(index);
-        if (index === null) {
+        var code_point = (pointer === null) ? null : big5CodePoint(pointer);
+        if (pointer === null) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
@@ -1148,10 +1148,10 @@
           return decoderError(fatal);
         }
         var code_point = null;
-        var index = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
+        var pointer = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
         if (0x21 <= iso2022jp_lead && iso2022jp_lead <= 0x7E &&
             0x21 <= bite && bite <= 0x7E) {
-          code_point = (iso2022jp_jis0212 === false) ? jis0208CodePoint(index) : jis0212CodePoint(index);
+          code_point = (iso2022jp_jis0212 === false) ? jis0208CodePoint(pointer) : jis0212CodePoint(pointer);
         }
         if (code_point === null) {
           return decoderError(fatal);
@@ -1260,26 +1260,26 @@
       byte_pointer.offset(1);
       if (euckr_lead !== 0x00) {
         var lead = euckr_lead;
-        var index = null;
+        var pointer = null;
         euckr_lead = 0x00;
 
         if (0x81 <= lead && lead <= 0xC6) {
           var temp = (26 + 26 + 126) * (lead - 0x81);
           if (0x41 <= bite && bite <= 0x5A) {
-            index = temp + bite - 0x41;
+            pointer = temp + bite - 0x41;
           } else if (0x61 <= bite && bite <= 0x7A) {
-            index = temp + 26 + bite - 0x61;
+            pointer = temp + 26 + bite - 0x61;
           } else if (0x81 <= bite && bite <= 0xFE) {
-            index = temp + 26 + 26 + bite - 0x81;
+            pointer = temp + 26 + 26 + bite - 0x81;
           }
         }
 
         if (0xC7 <= lead && lead <= 0xFD && 0xA1 <= bite && bite <= 0xFE) {
-          index = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 + (bite - 0xA1);
+          pointer = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 + (bite - 0xA1);
         }
 
-        var code_point = (index === null) ? null : euckrCodePoint(index);
-        if (index === null) {
+        var code_point = (pointer === null) ? null : euckrCodePoint(pointer);
+        if (pointer === null) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
