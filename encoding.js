@@ -378,7 +378,7 @@
         return;
       }
       if (code_point > 0xff) {
-        throw new Error('Invalid binary string data');
+        encoderError(code_point);
       }
       output_byte_stream.write(code_point);
     };
@@ -412,7 +412,7 @@
         return;
       }
       if (0xD800 <= code_point && code_point <= 0xDFFF) {
-        throw new Error('Invalid code point');
+        encoderError(code_point);
       }
       if (0x0000 <= code_point && code_point <= 0x007f) {
         output_byte_stream.write(code_point);
@@ -448,6 +448,10 @@
       throw new Error("EncodingError");
     }
     return opt_code_point || fallback_code_point;
+  }
+
+  function encoderError(code_point) {
+    throw new Error("EncodingError");
   }
 
   /**
@@ -527,37 +531,46 @@
     };
   }
 
-  // Generic Encoders/Decoders for single byte encodings, using maps
+  /**
+   * @param {number} code_point
+   * @param {Array.<?number>} index
+   */
+  function pointer_for(code_point, index) {
+    var pointer = index.indexOf(code_point);
+    return pointer === -1 ? null : pointer;
+  }
+
+  // Generic Encoders/Decoders for single byte encodings, using indexes
   /**
    * @constructor
-   * @param {Array.<number>} map
+   * @param {Array.<?number>} index
    * @param {{fatal: boolean}} options
    */
-  function SingleByteEncoder(map, options) {
+  function SingleByteEncoder(index, options) {
     var fatal = options.fatal;
     this.encode = function (output_byte_stream, input_code_point_stream) {
       var code_point = input_code_point_stream.read();
-        if (code_point === eof) {
-          return;
-        }
-      if (code_point <= 0x7f) {
+      if (code_point === eof) {
+        return;
+      }
+      if (0x0000 <= code_point && code_point <= 0x007F) {
         output_byte_stream.write(code_point);
       } else {
-        var index = map.indexOf(code_point);
-        if (index === -1) {
-          throw new Error('Can not encode code point ' + code_point);
+        var pointer = pointer_for(code_point, index);
+        if (pointer === null) {
+          encoderError(code_point);
         }
-        output_byte_stream.write(index + 0x80);
+        output_byte_stream.write(pointer + 0x80);
       }
     };
   }
 
   /**
    * @constructor
-   * @param {Array.<number>} map
+   * @param {Array.<number>} index
    * @param {{fatal: boolean}} options
    */
-  function SingleByteDecoder(map, options) {
+  function SingleByteDecoder(index, options) {
     var fatal = options.fatal;
     this.decode = function (byte_pointer) {
       var bite = byte_pointer.get();
@@ -565,10 +578,10 @@
         return eof;
       }
       byte_pointer.offset(1);
-      if (bite <= 0x7f) {
+      if (0x00 <= bite && bite <= 0x7F) {
         return bite;
       } else {
-        var code_point = map[bite - 0x80];
+        var code_point = index[bite - 0x80];
         if (code_point === null) {
           return decoderError(fatal);
         } else {
@@ -582,9 +595,9 @@
     var i;
     for (i = 0; i < codecs.length; ++i) {
       if (codecs[i].encoding) {
-        (function (map) {
-          codecs[i].getEncoder = function (options) { return new SingleByteEncoder(map, options); };
-          codecs[i].getDecoder = function (options) { return new SingleByteDecoder(map, options); };
+        (function (index) {
+          codecs[i].getEncoder = function (options) { return new SingleByteEncoder(index, options); };
+          codecs[i].getDecoder = function (options) { return new SingleByteDecoder(index, options); };
         }(codecs[i].encoding));
       }
     }
@@ -614,7 +627,7 @@
         return;
       }
       if (0xD800 <= code_point && code_point <= 0xDFFF) {
-        throw new Error('Invalid code point');
+        encoderError(code_point);
       }
       if (code_point <= 0xFFFF) {
         convert_to_bytes(code_point);
