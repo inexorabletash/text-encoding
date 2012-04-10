@@ -10,7 +10,7 @@
    * @param {number} min
    * @param {number} max
    */
-  function in_range(a, min, max) {
+  function inRange(a, min, max) {
     return min <= a && a <= max;
   }
 
@@ -68,19 +68,19 @@
         }
         // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
         var c = string.charCodeAt(i);
-        if (!in_range(c, 0xD800, 0xDFFF)) {
+        if (!inRange(c, 0xD800, 0xDFFF)) {
           i += 1;
           return c;
-        } else if (in_range(c, 0xDC00, 0xDFFF)) {
+        } else if (inRange(c, 0xDC00, 0xDFFF)) {
           i += 1;
           return fallback_code_point;
-        } else { // (in_range(c, 0xD800, 0xDBFF))
+        } else { // (inRange(c, 0xD800, 0xDBFF))
           if (i === n - 1) {
             i += 1;
             return fallback_code_point;
           }
           var d = string.charCodeAt(i + 1);
-          if (in_range(d, 0xDC00, 0xDFFF)) {
+          if (inRange(d, 0xDC00, 0xDFFF)) {
             var a = c & 0x3FF;
             var b = d & 0x3FF;
             i += 2;
@@ -482,7 +482,7 @@
    * @param {number} code_point
    * @param {Array.<?number>} index
    */
-  function pointer_for(code_point, index) {
+  function pointerFor(code_point, index) {
     var pointer = index.indexOf(code_point);
     return pointer === -1 ? null : pointer;
   }
@@ -556,25 +556,25 @@
       byte_pointer.offset(1);
 
       if (utf8_bytes_needed === 0) {
-        if (in_range(bite, 0x00, 0x7F)) {
+        if (inRange(bite, 0x00, 0x7F)) {
           return bite;
-        } else if (in_range(bite, 0xC0, 0xDF)) {
+        } else if (inRange(bite, 0xC0, 0xDF)) {
           utf8_bytes_needed = 1;
           utf8_lower_boundary = 0x80;
           utf8_code_point = bite - 0xC0;
-        } else if (in_range(bite, 0xE0, 0xEF)) {
+        } else if (inRange(bite, 0xE0, 0xEF)) {
           utf8_bytes_needed = 2;
           utf8_lower_boundary = 0x800;
           utf8_code_point = bite - 0xE0;
-        } else if (in_range(bite, 0xF0, 0xF7)) {
+        } else if (inRange(bite, 0xF0, 0xF7)) {
           utf8_bytes_needed = 3;
           utf8_lower_boundary = 0x10000;
           utf8_code_point = bite - 0xF0;
-        } else if (in_range(bite, 0xF8, 0xFB)) {
+        } else if (inRange(bite, 0xF8, 0xFB)) {
           utf8_bytes_needed = 4;
           utf8_lower_boundary = 0x200000;
           utf8_code_point = bite - 0xF8;
-        } else if (in_range(bite, 0xFC, 0xFD)) {
+        } else if (inRange(bite, 0xFC, 0xFD)) {
           utf8_bytes_needed = 5;
           utf8_lower_boundary = 0x4000000;
           utf8_code_point = bite - 0xFC;
@@ -584,7 +584,7 @@
         utf8_code_point = utf8_code_point * Math.pow(64, utf8_bytes_needed);
         return null;
       }
-      if (!in_range(bite, 0x80, 0xBF)) {
+      if (!inRange(bite, 0x80, 0xBF)) {
         utf8_code_point = 0;
         utf8_bytes_needed = 0;
         utf8_bytes_seen = 0;
@@ -605,7 +605,7 @@
       utf8_lower_boundary = 0;
       if (code_point >= lower_boundary &&
           code_point <= 0x10FFFF &&
-          (!in_range(code_point, 0xD800, 0xDFFF))) {
+          (!inRange(code_point, 0xD800, 0xDFFF))) {
         return code_point;
       }
       return decoderError(fatal);
@@ -623,21 +623,21 @@
       if (code_point === eof) {
         return;
       }
-      if (in_range(code_point, 0xD800, 0xDFFF)) {
+      if (inRange(code_point, 0xD800, 0xDFFF)) {
         encoderError(code_point);
       }
-      if (in_range(code_point, 0x0000, 0x007f)) {
+      if (inRange(code_point, 0x0000, 0x007f)) {
         output_byte_stream.write(code_point);
         return;
       }
       var count, offset;
-      if (in_range(code_point, 0x0080, 0x07FF)) {
+      if (inRange(code_point, 0x0080, 0x07FF)) {
           count = 1;
         offset = 0xC0;
-      } else if (in_range(code_point, 0x0800, 0xFFFF)) {
+      } else if (inRange(code_point, 0x0800, 0xFFFF)) {
         count = 2;
         offset = 0xE0;
-      } else if (in_range(code_point, 0x10000, 0x10FFFF)) {
+      } else if (inRange(code_point, 0x10000, 0x10FFFF)) {
         count = 3;
         offset = 0xF0;
       }
@@ -667,7 +667,7 @@
         return eof;
       }
       byte_pointer.offset(1);
-      if (in_range(bite, 0x00, 0x7F)) {
+      if (inRange(bite, 0x00, 0x7F)) {
         return bite;
       } else {
         var code_point = index[bite - 0x80];
@@ -692,10 +692,10 @@
       if (code_point === eof) {
         return;
       }
-      if (in_range(code_point, 0x0000, 0x007F)) {
+      if (inRange(code_point, 0x0000, 0x007F)) {
         output_byte_stream.write(code_point);
       } else {
-        var pointer = pointer_for(code_point, index);
+        var pointer = pointerFor(code_point, index);
         if (pointer === null) {
           encoderError(code_point);
         }
@@ -778,7 +778,7 @@
       var code_point;
       if (gbk_third !== 0x00) {
         code_point = null;
-        if (in_range(bite, 0x30, 0x39)) {
+        if (inRange(bite, 0x30, 0x39)) {
           code_point = gbkCodePoint(
             (((gbk_first - 0x81) * 10 + (gbk_second - 0x30)) * 126 +
              (gbk_third - 0x81)) * 10 + bite - 0x30);
@@ -793,7 +793,7 @@
         return code_point;
       }
       if (gbk_second !== 0x00) {
-        if (in_range(bite, 0x81, 0xFE)) {
+        if (inRange(bite, 0x81, 0xFE)) {
           gbk_third = bite;
           return null;
         }
@@ -803,7 +803,7 @@
         return decoderError(fatal);
       }
       if (gbk_first !== 0x00) {
-        if (in_range(bite, 0x30, 0x39) && gb18030) {
+        if (inRange(bite, 0x30, 0x39) && gb18030) {
           gbk_second = bite;
           return null;
         }
@@ -811,7 +811,7 @@
         var pointer = null;
         gbk_first = 0x00;
         var offset = bite > 0x7F ? 0x41 : 0x40;
-        if (in_range(bite, 0x40, 0x7E) || in_range(bite, 0x80, 0xFE)) {
+        if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFE)) {
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
         code_point = pointer === null ? null : gbkCodePoint(pointer);
@@ -823,13 +823,13 @@
         }
         return code_point;
       }
-      if (in_range(bite, 0x00, 0x7F)) {
+      if (inRange(bite, 0x00, 0x7F)) {
         return bite;
       }
       if (bite === 0x80) {
         return 0x20AC;
       }
-      if (in_range(bite, 0x81, 0xFE)) {
+      if (inRange(bite, 0x81, 0xFE)) {
         gbk_first = bite;
         return null;
       }
@@ -881,7 +881,7 @@
         var lead = hzgb2312_lead;
         hzgb2312_lead = 0x00;
         var code_point = null;
-        if (in_range(bite, 0x20, 0x7E)) {
+        if (inRange(bite, 0x20, 0x7E)) {
           code_point = gbkCodePoint((lead - 1) * 190 + (bite + 0x3F));
         }
         if (bite === 0x0A) {
@@ -897,7 +897,7 @@
         return null;
       }
       if (hzgb2312) {
-        if (in_range(bite, 0x20, 0x7F)) {
+        if (inRange(bite, 0x20, 0x7F)) {
           hzgb2312_lead = bite;
           return null;
         }
@@ -906,7 +906,7 @@
         }
         return decoderError(fatal);
       }
-      if (in_range(bite, 0x00, 0x7F)) {
+      if (inRange(bite, 0x00, 0x7F)) {
         return bite;
       }
       return decoderError(fatal);
@@ -972,7 +972,7 @@
           return 0x00EA;
         }
         var offset = (bite < 0x7F) ? 0x40 : 0x62;
-        if (in_range(bite, 0x40, 0x7E) || in_range(bite, 0xA1, 0xFE)) {
+        if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0xA1, 0xFE)) {
           pointer = (lead - 0x81) * 157 + (bite - offset);
         }
         var code_point = (pointer === null) ? null : big5CodePoint(pointer);
@@ -984,10 +984,10 @@
         }
         return code_point;
       }
-      if (in_range(bite, 0x00, 0x7F)) {
+      if (inRange(bite, 0x00, 0x7F)) {
         return bite;
       }
-      if (in_range(bite, 0x81, 0xFE)) {
+      if (inRange(bite, 0x81, 0xFE)) {
         big5_lead = bite;
         return null;
       }
@@ -1044,10 +1044,10 @@
         lead = eucjp_second;
         eucjp_second = 0x00;
         code_point = null;
-        if (in_range(lead, 0xA1, 0xFE) && in_range(bite, 0xA1, 0xFE)) {
+        if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
           code_point = jis0212CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
         }
-        if (!in_range(bite, 0xA1, 0xFE)) {
+        if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
@@ -1055,11 +1055,11 @@
         }
         return code_point;
       }
-      if (eucjp_first === 0x8E && in_range(bite, 0xA1, 0xDF)) {
+      if (eucjp_first === 0x8E && inRange(bite, 0xA1, 0xDF)) {
         eucjp_first = 0x00;
-        return 0xFF61 - 0xA1 + bite;
+        return 0xFF61 + bite - 0xA1;
       }
-      if (eucjp_first === 0x8F && in_range(bite, 0xA1, 0xFE)) {
+      if (eucjp_first === 0x8F && inRange(bite, 0xA1, 0xFE)) {
         eucjp_first = 0x00;
         eucjp_second = bite;
         return null;
@@ -1068,10 +1068,10 @@
         lead = eucjp_first;
         eucjp_first = 0x00;
         code_point = null;
-        if (in_range(lead, 0xA1, 0xFE) && in_range(bite, 0xA1, 0xFE)) {
+        if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
           code_point = jis0208CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
         }
-        if (!in_range(bite, 0xA1, 0xFE)) {
+        if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
@@ -1079,10 +1079,10 @@
         }
         return code_point;
       }
-      if (in_range(bite, 0x00, 0x7F)) {
+      if (inRange(bite, 0x00, 0x7F)) {
         return bite;
       }
-      if (bite === 0x8E || bite === 0x8F || (in_range(bite, 0xA1, 0xFE))) {
+      if (bite === 0x8E || bite === 0x8F || (inRange(bite, 0xA1, 0xFE))) {
         eucjp_first = bite;
         return null;
       }
@@ -1123,7 +1123,7 @@
           iso2022jp_state = state.escape_start;
           return null;
         }
-        if (in_range(bite, 0x00, 0x7F)) {
+        if (inRange(bite, 0x00, 0x7F)) {
           return bite;
         }
         if (bite === eof) {
@@ -1208,7 +1208,7 @@
         }
         var code_point = null;
         var pointer = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
-        if (in_range(iso2022jp_lead, 0x21, 0x7E) && in_range(bite, 0x21, 0x7E)) {
+        if (inRange(iso2022jp_lead, 0x21, 0x7E) && inRange(bite, 0x21, 0x7E)) {
           code_point = (iso2022jp_jis0212 === false) ? jis0208CodePoint(pointer) : jis0212CodePoint(pointer);
         }
         if (code_point === null) {
@@ -1221,8 +1221,8 @@
           iso2022jp_state = state.escape_start;
           return null;
         }
-        if (in_range(bite, 0x21, 0x5F)) {
-          return 0xFF61 - 0x21 + bite;
+        if (inRange(bite, 0x21, 0x5F)) {
+          return 0xFF61 + bite - 0x21;
         }
         if (bite === eof) {
           return eof;
@@ -1255,7 +1255,7 @@
       if (shiftjis_lead !== 0x00) {
         var lead = shiftjis_lead;
         shiftjis_lead = 0x00;
-        if (in_range(bite, 0x40, 0x7E) || in_range(bite, 0x80, 0xFC)) {
+        if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFC)) {
           var offset = (bite < 0x7F) ? 0x40 : 0x41;
           var lead_offset = (lead < 0xA0) ? 0x81 : 0xC1;
           var code_point = jis0208CodePoint((lead - lead_offset) * 188 + bite - offset);
@@ -1267,13 +1267,13 @@
         byte_pointer.offset(-1);
         return decoderError(fatal);
       }
-      if (in_range(bite, 0x00, 0x80)) {
+      if (inRange(bite, 0x00, 0x80)) {
         return bite;
       }
-      if (in_range(bite, 0xA1, 0xDF)) {
-        return 0xFF61 - 0xA1 + bite;
+      if (inRange(bite, 0xA1, 0xDF)) {
+        return 0xFF61 + bite - 0xA1;
       }
-      if (in_range(bite, 0x81, 0x9F) || in_range(bite, 0xE0, 0xFC)) {
+      if (inRange(bite, 0x81, 0x9F) || inRange(bite, 0xE0, 0xFC)) {
         shiftjis_lead  = bite;
         return null;
       }
@@ -1317,18 +1317,18 @@
         var pointer = null;
         euckr_lead = 0x00;
 
-        if (in_range(lead, 0x81, 0xC6)) {
+        if (inRange(lead, 0x81, 0xC6)) {
           var temp = (26 + 26 + 126) * (lead - 0x81);
-          if (in_range(bite, 0x41, 0x5A)) {
+          if (inRange(bite, 0x41, 0x5A)) {
             pointer = temp + bite - 0x41;
-          } else if (in_range(bite, 0x61, 0x7A)) {
+          } else if (inRange(bite, 0x61, 0x7A)) {
             pointer = temp + 26 + bite - 0x61;
-          } else if (in_range(bite, 0x81, 0xFE)) {
+          } else if (inRange(bite, 0x81, 0xFE)) {
             pointer = temp + 26 + 26 + bite - 0x81;
           }
         }
 
-        if (in_range(lead, 0xC7, 0xFD) && in_range(bite, 0xA1, 0xFE)) {
+        if (inRange(lead, 0xC7, 0xFD) && inRange(bite, 0xA1, 0xFE)) {
           pointer = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 + (bite - 0xA1);
         }
 
@@ -1342,11 +1342,11 @@
         return code_point;
       }
 
-      if (in_range(bite, 0x00, 0x7F)) {
+      if (inRange(bite, 0x00, 0x7F)) {
         return bite;
       }
 
-      if (in_range(bite, 0x81, 0xFD)) {
+      if (inRange(bite, 0x81, 0xFD)) {
         euckr_lead = bite;
         return null;
       }
@@ -1384,7 +1384,7 @@
           return null;
         } else if (bite === 0x0F) {
           return null;
-        } else if (in_range(bite, 0x00, 0x7F)) {
+        } else if (inRange(bite, 0x00, 0x7F)) {
           return bite;
         } else if (bite === eof) {
           return eof;
@@ -1413,9 +1413,9 @@
           return decoderError(fatal);
         }
         var code_point = null;
-        if (in_range(iso2022kr_lead, 0x21, 0x46) && in_range(bite, 0x21, 0x7E)) {
+        if (inRange(iso2022kr_lead, 0x21, 0x46) && inRange(bite, 0x21, 0x7E)) {
           code_point = euckrCodePoint((26 + 26 + 126) * (iso2022kr_lead - 1) + 26 + 26 + bite - 1);
-        } else if (in_range(iso2022kr_lead, 0x74, 0x7E) && in_range(bite, 0x21, 0x7E)) {
+        } else if (inRange(iso2022kr_lead, 0x74, 0x7E) && inRange(bite, 0x21, 0x7E)) {
           code_point = euckrCodePoint((26 + 26 + 126) * (0xC7 - 0x81) + (iso2022kr_lead - 0x47) * 94 + (bite - 0x21));
         }
         if (code_point !== null) {
@@ -1466,18 +1466,18 @@
       if (utf16_lead_surrogate !== null) {
         var lead_surrogate = utf16_lead_surrogate;
         utf16_lead_surrogate = null;
-        if (in_range(code_point, 0xDC00, 0xDFFF)) {
+        if (inRange(code_point, 0xDC00, 0xDFFF)) {
           return 0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00);
         } else {
           byte_pointer.offset(-2);
           return decoderError(fatal);
         }
       }
-      if (in_range(code_point, 0xD800, 0xDBFF)) {
+      if (inRange(code_point, 0xD800, 0xDBFF)) {
         utf16_lead_surrogate = code_point;
         return null;
       }
-      if (in_range(code_point, 0xDC00, 0xDFFF)) {
+      if (inRange(code_point, 0xDC00, 0xDFFF)) {
         return decoderError(fatal);
       }
       return code_point;
@@ -1507,7 +1507,7 @@
       if (code_point === eof) {
         return;
       }
-      if (in_range(code_point, 0xD800, 0xDFFF)) {
+      if (inRange(code_point, 0xD800, 0xDFFF)) {
         encoderError(code_point);
       }
       if (code_point <= 0xFFFF) {
