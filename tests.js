@@ -281,7 +281,8 @@ test(
   "Encoding names",
   function () {
     equal(TextEncoder("utf-8").encoding, "utf-8"); // canonical case
-    equal(TextEncoder("UTF-16").encoding, "utf-16le"); // canonical case and name
+    equal(TextEncoder("UTF-16").encoding, "utf-16"); // canonical case and name
+    equal(TextEncoder("UTF-16BE").encoding, "utf-16be"); // canonical case and name
     equal(TextEncoder("iso8859-1").encoding, "windows-1252"); // canonical case and name
     equal(TextEncoder("iso-8859-1").encoding, "windows-1252"); // canonical case and name
 

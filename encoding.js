@@ -1,7 +1,9 @@
 (function(global){
   "use strict";
 
-  /** @const */ var eof = -1;
+  //
+  // Utilities
+  //
 
   /** @param {Uint8Array} bytes */
   function ByteInputStream(bytes) {
@@ -101,7 +103,60 @@
     };
   }
 
+  //
+  // Implementation of Encoding Standard
+  //
+
+  //
+  // 3. Terminology
+  //
+
   /** @const */ var fallback_code_point = 0xFFFD;
+
+  //
+  // 4. Encodings
+  //
+
+  // TODO: Distinguish EOF byte and EOF code point
+  /** @const */ var eof = -1;
+
+
+  /**
+   * @param {boolean} fatal
+   * @param {number=} opt_code_point
+   * @return {number}
+   */
+  function decoderError(fatal, opt_code_point) {
+    if (fatal) {
+      throw new Error("EncodingError");
+    }
+    return opt_code_point || fallback_code_point;
+  }
+
+  /**
+   * @param {number} code_point
+   */
+  function encoderError(code_point) {
+    throw new Error("EncodingError");
+  }
+
+  /**
+   * @param {string} label
+   */
+  function getEncoding(label) {
+    label = String(label).trim().toLowerCase();
+    var i;
+    for (i = 0; i < codecs.length; ++i) {
+      if (codecs[i].labels.indexOf(label) !== -1) {
+        return codecs[i];
+      }
+    }
+    throw new Error("Unknown encoding: " + label);
+  }
+
+
+
+
 
   /** @type {Array.<{name:string,
    *                 labels:Array.<string>,
@@ -110,6 +165,7 @@
    *                 encoding:Array.<number>
    *               }>} */
   var codecs = [
+    // Specific to this spec
     {
       name: 'binary',
       labels: ['binary'],
@@ -117,6 +173,7 @@
       getDecoder: function (options) { return new BinaryDecoder(options); }
     },
 
+    // The Encoding
     {
       name: 'utf-8',
       labels: ['utf-8'],
@@ -124,103 +181,7 @@
       getDecoder: function (options) { return new UTF8Decoder(options); }
     },
 
-    {
-      name: "gbk",
-      labels: ["chinese",
-               "csgb2312",
-               "csiso58gb231280",
-               "gb2312",
-               "gb_2312",
-               "gb_2312-80",
-               "gbk",
-               "iso-ir-58",
-               "x-gbk"],
-      getDecoder: function (options) { return new GBKDecoder(false, options); }
-    },
-
-    {
-      name: "gbk18030",
-      labels: ["gb18030"],
-      getDecoder: function (options) { return new GBKDecoder(true, options); }
-    },
-
-    {
-      name: "hz-gb-2312",
-      labels: ["hz-gb-2312"],
-      getDecoder: function (options) { return new HZGB2312Decoder(options); }
-    },
-
-    {
-      name: "big5",
-      labels: ["big5",
-               "big5-hkscs",
-               "cn-big5",
-               "csbig5",
-               "x-x-big5"],
-      getDecoder: function (options) { return new Big5Decoder(options); }
-    },
-
-    {
-      name: 'euc-jp',
-      labels: ["cseucjpkdfmtjapanese",
-               "euc-jp",
-               "x-euc-jp"],
-      getDecoder: function (options) { return new EUCJPDecoder(options); }
-    },
-
-    {
-      name: "iso-2022-jp",
-      labels: ["csiso2022jp",
-               "iso-2022-jp"],
-      getDecoder: function (options) { return new ISO2022JPDecoder(options); }
-    },
-
-    {
-      name: "shift_jis",
-      labels: ["csshiftjis",
-               "ms_kanji",
-               "shift-jis",
-               "shift_jis",
-               "windows-31j",
-               "x-sjis"],
-      getDecoder: function (options) { return new ShiftJISDecoder(options); }
-    },
-
-    {
-      name: "euc-kr",
-      labels: ["csksc56011987",
-               "csueckr",
-               "euc-kr",
-               "iso-ir-149",
-               "korean",
-               "ks_c_5601-1989",
-               "ksc5601",
-               "ksc_5601",
-               "windows-949"],
-      getDecoder: function (options) { return new EUCKRDecoder(options); }
-    },
-
-    {
-      name: "iso-2022-kr",
-      labels: ["csiso2022kr",
-               "iso-2022-kr"],
-      getDecoder: function (options) { return new ISO2022KRDecoder(options); }
-    },
-
-    {
-      name: 'utf-16le',
-      labels: ['utf-16le', 'utf-16'],
-      getEncoder: function (options) { return new UTF16Encoder(false, options); },
-      getDecoder: function (options) { return new UTF16Decoder(false, options); }
-    },
-
-    {
-      name: 'utf-16be',
-      labels: ['utf-16be'],
-      getEncoder: function (options) { return new UTF16Encoder(true, options); },
-      getDecoder: function (options) { return new UTF16Decoder(true, options); }
-    },
-
+    // Legacy single-byte encodings
     // From: http://dvcs.w3.org/hg/encoding/raw-file/tip/single-byte-encodings.json
     {
       "name":"ibm864",
@@ -363,8 +324,126 @@
       "name":"x-mac-cyrillic",
       "labels":["x-mac-cyrillic","x-mac-ukrainian"],
       "encoding":[1040,1041,1042,1043,1044,1045,1046,1047,1048,1049,1050,1051,1052,1053,1054,1055,1056,1057,1058,1059,1060,1061,1062,1063,1064,1065,1066,1067,1068,1069,1070,1071,8224,176,1168,163,167,8226,182,1030,174,169,8482,1026,1106,8800,1027,1107,8734,177,8804,8805,1110,181,1169,1032,1028,1108,1031,1111,1033,1113,1034,1114,1112,1029,172,8730,402,8776,8710,171,187,8230,160,1035,1115,1036,1116,1109,8211,8212,8220,8221,8216,8217,247,8222,1038,1118,1039,1119,8470,1025,1105,1103,1072,1073,1074,1075,1076,1077,1078,1079,1080,1081,1082,1083,1084,1085,1086,1087,1088,1089,1090,1091,1092,1093,1094,1095,1096,1097,1098,1099,1100,1101,1102,8364]
+    },
+
+    // Legacy multi-byte Chinese (simplified) encodings
+    {
+      name: "gbk",
+      labels: ["chinese",
+               "csgb2312",
+               "csiso58gb231280",
+               "gb2312",
+               "gb_2312",
+               "gb_2312-80",
+               "gbk",
+               "iso-ir-58",
+               "x-gbk"],
+      getDecoder: function (options) { return new GBKDecoder(false, options); }
+    },
+
+    {
+      name: "gbk18030",
+      labels: ["gb18030"],
+      getDecoder: function (options) { return new GBKDecoder(true, options); }
+    },
+
+    {
+      name: "hz-gb-2312",
+      labels: ["hz-gb-2312"],
+      getDecoder: function (options) { return new HZGB2312Decoder(options); }
+    },
+
+    // Legacy multi-byte Chinese (traditional) encodings
+    {
+      name: "big5",
+      labels: ["big5",
+               "big5-hkscs",
+               "cn-big5",
+               "csbig5",
+               "x-x-big5"],
+      getDecoder: function (options) { return new Big5Decoder(options); }
+    },
+
+    // Legacy multi-byte Japanese encodings
+    {
+      name: 'euc-jp',
+      labels: ["cseucjpkdfmtjapanese",
+               "euc-jp",
+               "x-euc-jp"],
+      getDecoder: function (options) { return new EUCJPDecoder(options); }
+    },
+
+    {
+      name: "iso-2022-jp",
+      labels: ["csiso2022jp",
+               "iso-2022-jp"],
+      getDecoder: function (options) { return new ISO2022JPDecoder(options); }
+    },
+
+    {
+      name: "shift_jis",
+      labels: ["csshiftjis",
+               "ms_kanji",
+               "shift-jis",
+               "shift_jis",
+               "windows-31j",
+               "x-sjis"],
+      getDecoder: function (options) { return new ShiftJISDecoder(options); }
+    },
+
+    // Legacy multi-byte Korean encodings
+    {
+      name: "euc-kr",
+      labels: ["csksc56011987",
+               "csueckr",
+               "euc-kr",
+               "iso-ir-149",
+               "korean",
+               "ks_c_5601-1989",
+               "ksc5601",
+               "ksc_5601",
+               "windows-949"],
+      getDecoder: function (options) { return new EUCKRDecoder(options); }
+    },
+
+    {
+      name: "iso-2022-kr",
+      labels: ["csiso2022kr",
+               "iso-2022-kr"],
+      getDecoder: function (options) { return new ISO2022KRDecoder(options); }
+    },
+
+    // Legacy utf-16 encodings
+    {
+      name: 'utf-16',
+      labels: ['utf-16', 'utf-16le'],
+      getEncoder: function (options) { return new UTF16Encoder(false, options); },
+      getDecoder: function (options) { return new UTF16Decoder(false, options); }
+    },
+
+    {
+      name: 'utf-16be',
+      labels: ['utf-16be'],
+      getEncoder: function (options) { return new UTF16Encoder(true, options); },
+      getDecoder: function (options) { return new UTF16Decoder(true, options); }
     }
   ];
+
+  //
+  // 5. Indexes
+  //
+
+  /**
+   * @param {number} code_point
+   * @param {Array.<?number>} index
+   */
+  function pointer_for(code_point, index) {
+    var pointer = index.indexOf(code_point);
+    return pointer === -1 ? null : pointer;
+  }
+
+
+
 
   /**
    * @constructor
@@ -400,59 +479,11 @@
     };
   }
 
-  /**
-   * @constructor
-   * @param {{fatal: boolean}} options
-   */
-  function UTF8Encoder(options) {
-    var fatal = options.fatal;
-    this.encode = function (output_byte_stream, input_code_point_stream) {
-      var code_point = input_code_point_stream.read();
-      if (code_point === eof) {
-        return;
-      }
-      if (0xD800 <= code_point && code_point <= 0xDFFF) {
-        encoderError(code_point);
-      }
-      if (0x0000 <= code_point && code_point <= 0x007f) {
-        output_byte_stream.write(code_point);
-        return;
-      }
-      var count, offset;
-      if (0x0080 <= code_point && code_point <= 0x07FF) {
-          count = 1;
-        offset = 0xC0;
-      } else if (0x0800 <= code_point && code_point <= 0xFFFF) {
-        count = 2;
-        offset = 0xE0;
-      } else if (0x10000 <= code_point && code_point <= 0x10FFFF) {
-        count = 3;
-        offset = 0xF0;
-      }
-      output_byte_stream.write(Math.floor(code_point / Math.pow(64, count)) + offset);
-      while (count > 0) {
-        var temp = Math.floor(code_point / Math.pow(64, count - 1));
-        output_byte_stream.write(0x80 + (temp % 64));
-        count -= 1;
-      }
-    };
-  }
+  //
+  // 7. The encoding
+  //
 
-  /**
-   * @param {boolean} fatal
-   * @param {number=} opt_code_point
-   * @return {number}
-   */
-  function decoderError(fatal, opt_code_point) {
-    if (fatal) {
-      throw new Error("EncodingError");
-    }
-    return opt_code_point || fallback_code_point;
-  }
-
-  function encoderError(code_point) {
-    throw new Error("EncodingError");
-  }
+  // 7.1 utf-8
 
   /**
    * @constructor
@@ -532,38 +563,46 @@
   }
 
   /**
-   * @param {number} code_point
-   * @param {Array.<?number>} index
-   */
-  function pointer_for(code_point, index) {
-    var pointer = index.indexOf(code_point);
-    return pointer === -1 ? null : pointer;
-  }
-
-  // Generic Encoders/Decoders for single byte encodings, using indexes
-  /**
    * @constructor
-   * @param {Array.<?number>} index
    * @param {{fatal: boolean}} options
    */
-  function SingleByteEncoder(index, options) {
+  function UTF8Encoder(options) {
     var fatal = options.fatal;
     this.encode = function (output_byte_stream, input_code_point_stream) {
       var code_point = input_code_point_stream.read();
       if (code_point === eof) {
         return;
       }
-      if (0x0000 <= code_point && code_point <= 0x007F) {
+      if (0xD800 <= code_point && code_point <= 0xDFFF) {
+        encoderError(code_point);
+      }
+      if (0x0000 <= code_point && code_point <= 0x007f) {
         output_byte_stream.write(code_point);
-      } else {
-        var pointer = pointer_for(code_point, index);
-        if (pointer === null) {
-          encoderError(code_point);
-        }
-        output_byte_stream.write(pointer + 0x80);
+        return;
+      }
+      var count, offset;
+      if (0x0080 <= code_point && code_point <= 0x07FF) {
+          count = 1;
+        offset = 0xC0;
+      } else if (0x0800 <= code_point && code_point <= 0xFFFF) {
+        count = 2;
+        offset = 0xE0;
+      } else if (0x10000 <= code_point && code_point <= 0x10FFFF) {
+        count = 3;
+        offset = 0xF0;
+      }
+      output_byte_stream.write(Math.floor(code_point / Math.pow(64, count)) + offset);
+      while (count > 0) {
+        var temp = Math.floor(code_point / Math.pow(64, count - 1));
+        output_byte_stream.write(0x80 + (temp % 64));
+        count -= 1;
       }
     };
   }
+
+  //
+  // 8. Legacy single-byte encodings
+  //
 
   /**
    * @constructor
@@ -591,111 +630,60 @@
     };
   }
 
+  /**
+   * @constructor
+   * @param {Array.<?number>} index
+   * @param {{fatal: boolean}} options
+   */
+  function SingleByteEncoder(index, options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, input_code_point_stream) {
+      var code_point = input_code_point_stream.read();
+      if (code_point === eof) {
+        return;
+      }
+      if (0x0000 <= code_point && code_point <= 0x007F) {
+        output_byte_stream.write(code_point);
+      } else {
+        var pointer = pointer_for(code_point, index);
+        if (pointer === null) {
+          encoderError(code_point);
+        }
+        output_byte_stream.write(pointer + 0x80);
+      }
+    };
+  }
+
   (function () {
     var i;
     for (i = 0; i < codecs.length; ++i) {
       if (codecs[i].encoding) {
         (function (index) {
-          codecs[i].getEncoder = function (options) { return new SingleByteEncoder(index, options); };
           codecs[i].getDecoder = function (options) { return new SingleByteDecoder(index, options); };
+          codecs[i].getEncoder = function (options) { return new SingleByteEncoder(index, options); };
         }(codecs[i].encoding));
       }
     }
   }());
 
-  /**
-   * @constructor
-   * @param {boolean} utf16_be
-   * @param {{fatal: boolean}} options
-   */
-  function UTF16Encoder(utf16_be, options) {
-    var fatal = options.fatal;
-    this.encode = function(output_byte_stream, input_code_point_stream) {
-      function convert_to_bytes(code_unit) {
-        var byte1 = code_unit >> 8;
-        var byte2 = code_unit & 0xFF;
-        if (utf16_be) {
-          output_byte_stream.write(byte1);
-          output_byte_stream.write(byte2);
-        } else {
-          output_byte_stream.write(byte2);
-          output_byte_stream.write(byte1);
-        }
-      }
-      var code_point = input_code_point_stream.read();
-      if (code_point === eof) {
-        return;
-      }
-      if (0xD800 <= code_point && code_point <= 0xDFFF) {
-        encoderError(code_point);
-      }
-      if (code_point <= 0xFFFF) {
-        convert_to_bytes(code_point);
-      } else {
-        var lead = ((code_point - 0x10000) / 0x400) + 0xD800;
-        var trail = ((code_point - 0x10000) % 0x400) + 0xDC00;
-        convert_to_bytes(lead);
-        convert_to_bytes(trail);
-      }
-    };
-  }
 
-  /**
-   * @constructor
-   * @param {boolean} utf16_be
-   * @param {{fatal: boolean}} options
-   */
-  function UTF16Decoder(utf16_be, options) {
-    var fatal = options.fatal;
-    var /** @type {?number} */ utf16_lead_byte = null,
-        /** @type {?number} */ utf16_lead_surrogate = null;
-    this.decode = function(byte_pointer) {
-      var bite = byte_pointer.get();
-      if (bite === eof) {
-        if (utf16_lead_byte || utf16_lead_surrogate) {
-          return decoderError(fatal);
-        }
-        return eof;
-      }
-      byte_pointer.offset(1);
-      if (utf16_lead_byte === null) {
-        utf16_lead_byte = bite;
-        return null;
-      }
-      var code_point;
-      if (utf16_be) {
-        code_point = (utf16_lead_byte << 8) + bite;
-      } else {
-        code_point = (bite << 8) + utf16_lead_byte;
-      }
-      utf16_lead_byte = null;
-      if (utf16_lead_surrogate !== null) {
-        var lead_surrogate = utf16_lead_surrogate;
-        utf16_lead_surrogate = null;
-        if (0xDC00 <= code_point && code_point <= 0xDFFF) {
-          return 0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00);
-        } else {
-          byte_pointer.offset(-2);
-          return decoderError(fatal);
-        }
-      }
-      if (0xD800 <= code_point && code_point <= 0xDBFF) {
-        utf16_lead_surrogate = code_point;
-        return null;
-      }
-      if (0xDC00 <= code_point && code_point <= 0xDFFF) {
-        return decoderError(fatal);
-      }
-      return code_point;
-    };
-  }
+  //
+  // 9. Legacy multi-byte Chinese (simplified) encodings
+  //
 
   // NOTE: prepend <script src="index-gbk.js"></script> to enable
+  /** @type {Array.<?number>} */
   var gbkIndex = global['gbkIndex'] || [];
-  /** @return {?number} */
+  /**
+   * @param {number} index
+   * @return {?number}
+   */
   function gbkCodePoint(index) {
     return gbkIndex[index] || null;
   }
+
+  // 9.1 gbk
+  // 9.2 gb18030
 
   /**
    * @constructor
@@ -782,6 +770,8 @@
     };
   }
 
+  // 9.3 hz-gb-2312
+
   /**
    * @constructor
    * @param {{fatal: boolean}} options
@@ -853,9 +843,20 @@
     };
   }
 
+
+  //
+  // 10. Legacy multi-byte Chinese (traditional) encodings
+  //
+
+  // 10.1 big5
+
   // NOTE: prepend <script src="index-big5.js"></script> to enable
+  /** @type {Array.<?number>} */
   var big5Index = global['big5Index'] || [];
-  /** @return {?number} */
+  /**
+   * @param {number} index
+   * @return {?number}
+   */
   function big5CodePoint(index) {
     return big5Index[index] || null;
   }
@@ -929,19 +930,34 @@
     };
   }
 
+
+  //
+  // 11. Legacy multi-byte Japanese encodings
+  //
+
   // NOTE: prepend <script src="index-jis0208.js"></script> to enable
+  /** @type {Array.<?number>} */
   var jis0208Index = global['jis0208Index'] || [];
-  /** @return {?number} */
-  function jis0208CodePoint(index) {
-    return jis0208Index[index] || null;
+  /**
+   * @param {number} pointer
+   * @return {?number}
+   */
+  function jis0208CodePoint(pointer) {
+    return jis0208Index[pointer] || null;
   }
 
   // NOTE: prepend <script src="index-jis0212.js"></script> to enable
+  /** @type {Array.<?number>} */
   var jis0212Index = global['jis0212Index'] || [];
-  /** @return {?number} */
-  function jis0212CodePoint(index) {
-    return jis0212Index[index] || null;
+  /**
+   * @param {number} pointer
+   * @return {?number}
+   */
+  function jis0212CodePoint(pointer) {
+    return jis0212Index[pointer] || null;
   }
+
+  // 11.1 euc.jp
 
   /**
    * @constructor
@@ -1014,6 +1030,8 @@
       return decoderError(fatal);
     };
   }
+
+  // 11.2 iso-2022-jp
 
   /**
    * @constructor
@@ -1156,6 +1174,8 @@
     };
   }
 
+  // 11.3 shift_jis
+
   /**
    * @constructor
    * @param {{fatal: boolean}} options
@@ -1204,12 +1224,22 @@
     };
   }
 
+  //
+  // 12. Legacy multi-byte Korean encodings
+  //
+
   // NOTE: prepend <script src="index-euc-kr.js"></script> to enable
+  /** @type {Array.<?number>} */
   var euckrIndex = global['euckrIndex'] || [];
-  /** @return {?number} */
-  function euckrCodePoint(index) {
-    return euckrIndex[index] || null;
+  /**
+   * @param {number} pointer
+   * @return {?number}
+   */
+  function euckrCodePoint(pointer) {
+    return euckrIndex[pointer] || null;
   }
+
+  // 12.1 euc-kr
 
   /**
    * @constructor
@@ -1270,6 +1300,8 @@
       return decoderError(fatal);
     };
   }
+
+  // 12.2 iso-2022-kr
 
   /**
    * @constructor
@@ -1343,15 +1375,98 @@
   }
 
 
-  function getEncoding(label) {
-    label = String(label).trim().toLowerCase();
-    var i;
-    for (i = 0; i < codecs.length; ++i) {
-      if (codecs[i].labels.indexOf(label) !== -1) {
-        return codecs[i];
+  //
+  // 13. Legacy utf-16 encodings
+  //
+
+  // 13.1 utf-16
+  // 13.2 utf-16be
+
+  /**
+   * @constructor
+   * @param {boolean} utf16_be
+   * @param {{fatal: boolean}} options
+   */
+  function UTF16Decoder(utf16_be, options) {
+    var fatal = options.fatal;
+    var /** @type {?number} */ utf16_lead_byte = null,
+        /** @type {?number} */ utf16_lead_surrogate = null;
+    this.decode = function(byte_pointer) {
+      var bite = byte_pointer.get();
+      if (bite === eof && utf16_lead_byte === null && utf16_lead_surrogate === null) {
+        return eof;
       }
-    }
-    throw new Error("Unknown encoding: " + label);
+      if (bite === eof && (utf16_lead_byte !== null || utf16_lead_surrogate !== null)) {
+        return decoderError(fatal);
+      }
+      byte_pointer.offset(1);
+      if (utf16_lead_byte === null) {
+        utf16_lead_byte = bite;
+        return null;
+      }
+      var code_point;
+      if (utf16_be) {
+        code_point = (utf16_lead_byte << 8) + bite;
+      } else {
+        code_point = (bite << 8) + utf16_lead_byte;
+      }
+      utf16_lead_byte = null;
+      if (utf16_lead_surrogate !== null) {
+        var lead_surrogate = utf16_lead_surrogate;
+        utf16_lead_surrogate = null;
+        if (0xDC00 <= code_point && code_point <= 0xDFFF) {
+          return 0x10000 + (lead_surrogate - 0xD800) * 0x400 + (code_point - 0xDC00);
+        } else {
+          byte_pointer.offset(-2);
+          return decoderError(fatal);
+        }
+      }
+      if (0xD800 <= code_point && code_point <= 0xDBFF) {
+        utf16_lead_surrogate = code_point;
+        return null;
+      }
+      if (0xDC00 <= code_point && code_point <= 0xDFFF) {
+        return decoderError(fatal);
+      }
+      return code_point;
+    };
+  }
+
+  /**
+   * @constructor
+   * @param {boolean} utf16_be
+   * @param {{fatal: boolean}} options
+   */
+  function UTF16Encoder(utf16_be, options) {
+    var fatal = options.fatal;
+    this.encode = function(output_byte_stream, input_code_point_stream) {
+      function convert_to_bytes(code_unit) {
+        var byte1 = code_unit >> 8;
+        var byte2 = code_unit & 0xFF;
+        if (utf16_be) {
+          output_byte_stream.write(byte1);
+          output_byte_stream.write(byte2);
+        } else {
+          output_byte_stream.write(byte2);
+          output_byte_stream.write(byte1);
+        }
+      }
+      var code_point = input_code_point_stream.read();
+      if (code_point === eof) {
+        return;
+      }
+      if (0xD800 <= code_point && code_point <= 0xDFFF) {
+        encoderError(code_point);
+      }
+      if (code_point <= 0xFFFF) {
+        convert_to_bytes(code_point);
+      } else {
+        var lead = ((code_point - 0x10000) / 0x400) + 0xD800;
+        var trail = ((code_point - 0x10000) % 0x400) + 0xDC00;
+        convert_to_bytes(lead);
+        convert_to_bytes(trail);
+      }
+    };
   }
 
   // NOTE: currently unused
@@ -1368,6 +1483,10 @@
     }
     return label;
   }
+
+  //
+  // Implementation of Text Encoding Web API
+  //
 
   /** @const */ var DEFAULT_ENCODING = 'utf-8';
 
