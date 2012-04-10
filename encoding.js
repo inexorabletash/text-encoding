@@ -547,7 +547,7 @@
         if (index === -1) {
           throw new Error('Can not encode code point ' + code_point);
         }
-        output_byte_stream.write(index + 128);
+        output_byte_stream.write(index + 0x80);
       }
     };
   }
@@ -568,7 +568,7 @@
       if (bite <= 0x7f) {
         return bite;
       } else {
-        var code_point = map[bite - 128];
+        var code_point = map[bite - 0x80];
         if (code_point === null) {
           return decoderError(fatal);
         } else {
@@ -677,10 +677,11 @@
     };
   }
 
-  // TODO: Add this table/function
+  // NOTE: prepend <script src="index-gbk.js"></script> to enable
+  var gbkIndex = global['gbkIndex'] || [];
   /** @return {?number} */
-  function gbkCodePoint() {
-    return null;
+  function gbkCodePoint(index) {
+    return gbkIndex[index] || null;
   }
 
   /**
@@ -725,7 +726,7 @@
       }
       if (gbk_second !== 0x00) {
         if (0x81 <= bite && bite <= 0xFE) {
-          gbk_second = bite;
+          gbk_third = bite;
           return null;
         }
         byte_pointer.offset(-2);
@@ -738,14 +739,21 @@
           gbk_second = bite;
           return null;
         }
-        if (0x40 <= bite && bite <= 0xFE) {
-          // TODO: Spec incomplete
-          code_point = gbkCodePoint();
-          gbk_first = 0x00;
-          return code_point;
-        }
+        var lead = gbk_first;
+        var index = null;
         gbk_first = 0x00;
-        return decoderError(fatal);
+        var offset = bite > 0x7F ? 0x41 : 0x40;
+        if ((0x40 <= bite && bite <= 0x7E) || (0x80 <= bite || bite <= 0xFE)) {
+          index = (lead - 0x81) * 190 + (bite - offset);
+        }
+        code_point = index == null ? null : gbkCodePoint(index);
+        if (index === null) {
+          byte_pointer.offset(-1);
+        }
+        if (code_point === null) {
+          return decoderError(fatal);
+        }
+        return code_point;
       }
       if (0x00 <= bite && bite <= 0x7F) {
         return bite;
@@ -836,7 +844,7 @@
   var big5Index = global['big5Index'] || [];
   /** @return {?number} */
   function big5CodePoint(index) {
-    return big5Index[location] || null;
+    return big5Index[index] || null;
   }
 
   /**
@@ -883,7 +891,7 @@
           big5_pending = 0x030C;
           return 0x00EA;
         }
-        var offset = (bite > 0x7F) ? 0x62 : 0x40;
+        var offset = (bite < 0x7F) ? 0x40 : 0x62;
         if (0x40 <= bite && bite <= 0x7E ||
             0xA1 <= bite && bite <= 0xFE) {
           index = (lead - 0x81) * 157 + (bite - offset);
@@ -911,17 +919,15 @@
   // NOTE: prepend <script src="index-jis0208.js"></script> to enable
   var jis0208Index = global['jis0208Index'] || [];
   /** @return {?number} */
-  function jis0208CodePoint(row, cell) {
-    var location = row * 94 + cell;
-    return jis0208Index[location] || null;
+  function jis0208CodePoint(index) {
+    return jis0208Index[index] || null;
   }
 
   // NOTE: prepend <script src="index-jis0212.js"></script> to enable
   var jis0212Index = global['jis0212Index'] || [];
   /** @return {?number} */
-  function jis0212CodePoint(row, cell) {
-    var location = row * 94 + cell;
-    return jis0212Index[location] || null;
+  function jis0212CodePoint(index) {
+    return jis0212Index[index] || null;
   }
 
   /**
@@ -951,7 +957,7 @@
         eucjp_second = 0x00;
         code_point = null;
         if (0xA1 <= lead && lead <= 0xFE && 0xA1 <= bite && bite <= 0xFE) {
-          code_point = jis0212CodePoint(lead - 0xA1, bite - 0xA1);
+          code_point = jis0212CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
         }
         if (code_point === null && (bite < 0xA1 || bite > 0xFE)) {
           byte_pointer.offset(-1);
@@ -975,7 +981,7 @@
         eucjp_first = 0x00;
         code_point = null;
         if (0xA1 <= lead && lead <= 0xFE && 0xA1 <= bite && bite <= 0xFE) {
-          code_point = jis0208CodePoint(lead - 0xA1, bite - 0xA1);
+          code_point = jis0208CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
         }
         if (code_point === null && (bite < 0xA1 || bite > 0xFE)) {
           byte_pointer.offset(-1);
@@ -1111,13 +1117,10 @@
           return decoderError(fatal);
         }
         var code_point = null;
+        var index = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
         if (0x21 <= iso2022jp_lead && iso2022jp_lead <= 0x7E &&
             0x21 <= bite && bite <= 0x7E) {
-          if (iso2022jp_jis0212 === false) {
-            code_point = jis0208CodePoint(iso2022jp_lead - 0x21, bite - 0x21);
-          } else {
-            code_point = jis0212CodePoint(iso2022jp_lead - 0x21, bite - 0x21);
-          }
+          code_point = (iso2022jp_jis0212 === false) ? jis0208CodePoint(index) : jis0212CodePoint(index);
         }
         if (code_point === null) {
           return decoderError(fatal);
@@ -1147,13 +1150,13 @@
   function ShiftJISDecoder(options) {
     var fatal = options.fatal;
     /** @const */ var shiftjis_fallback_code_point = 0x30FB;
-    var /** @type{number} */ shiftjis_lead = 0x00;
+    var /** @type {number} */ shiftjis_lead = 0x00;
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
-      if (bite === eof && shiftjis_lead === 0) {
+      if (bite === eof && shiftjis_lead === 0x00) {
         return eof;
       }
-      if (bite === eof && shiftjis_lead !== 0) {
+      if (bite === eof && shiftjis_lead !== 0x00) {
         shiftjis_lead = 0x00;
         return decoderError(fatal);
       }
@@ -1162,19 +1165,9 @@
         var lead = shiftjis_lead;
         shiftjis_lead = 0x00;
         if ((0x40 <= bite && bite <= 0x7E) || (0x80 <= bite && bite <= 0xFC)) {
-          var offset = (bite < 0x7F) ? 64 : 65;
-          if (0xF0 <= lead && lead <= 0xF9) {
-            return decoderError(fatal,
-                                0xE000 + (lead - 0xF0) * 188 + bite - offset);
-          }
-          var adjust = (bite < 0x9F) ? 1 : 0;
-          var lead_offset = (lead < 160) ? 112 : 176;
-          if (adjust === 0) {
-            offset = 159;
-          }
-          var row = (lead - lead_offset) << 1;
-          row = row - adjust - 33;
-          var code_point = jis0208CodePoint(row, bite - offset);
+          var offset = (bite < 0x7F) ? 0x40 : 0x41;
+          var lead_offset = (lead < 0xA0) ? 0x81 : 0xC1;
+          var code_point = jis0208CodePoint((lead - lead_offset) * 188 + bite - offset);
           if (code_point === null) {
             return decoderError(fatal, shiftjis_fallback_code_point);
           }
@@ -1186,14 +1179,8 @@
       if (0x00 <= bite && bite <= 0x80) {
         return bite;
       }
-      if (bite === 0xA0) {
-        return 0xF8F0;
-      }
       if (0xA1 <= bite && bite <= 0xDF) {
         return 0xFF61 - 0xA1 + bite;
-      }
-      if (0xFD <= bite && bite <= 0xFF) {
-        return 0xF7F4 + bite;
       }
       if ((0x81 <= bite && bite <= 0x9F) ||
           (0xE0 <= bite && bite <= 0xFC)) {
