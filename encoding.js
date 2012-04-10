@@ -959,7 +959,7 @@
         if (0xA1 <= lead && lead <= 0xFE && 0xA1 <= bite && bite <= 0xFE) {
           code_point = jis0212CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
         }
-        if (code_point === null && (bite < 0xA1 || bite > 0xFE)) {
+        if (bite < 0xA1 || bite > 0xFE) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
@@ -983,7 +983,7 @@
         if (0xA1 <= lead && lead <= 0xFE && 0xA1 <= bite && bite <= 0xFE) {
           code_point = jis0208CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
         }
-        if (code_point === null && (bite < 0xA1 || bite > 0xFE)) {
+        if (bite < 0xA1 || bite > 0xFE) {
           byte_pointer.offset(-1);
         }
         if (code_point === null) {
@@ -1033,7 +1033,7 @@
           iso2022jp_state = state.escape_start;
           return null;
         }
-        if (0x00 <= bite && bite <= 0x7E) {
+        if (0x00 <= bite && bite <= 0x7F) {
           return bite;
         }
         if (bite === eof) {
@@ -1249,7 +1249,7 @@
         return bite;
       }
 
-      if (0x81 <= euckr_lead && euckr_lead <= 0xFD) {
+      if (0x81 <= bite && bite <= 0xFD) {
         euckr_lead = bite;
         return null;
       }
@@ -1285,7 +1285,7 @@
           return null;
         } else if (bite === 0x0F) {
           return null;
-        } else if (0x00 <= bite && bite <= 0x7E) {
+        } else if (0x00 <= bite && bite <= 0x7F) {
           return bite;
         } else if (bite === eof) {
           return eof;
