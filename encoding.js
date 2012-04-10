@@ -779,7 +779,7 @@
       if (gbk_third !== 0x00) {
         code_point = null;
         if (inRange(bite, 0x30, 0x39)) {
-          code_point = gbkCodePoint(
+          code_point = gb18030CodePoint(
             (((gbk_first - 0x81) * 10 + (gbk_second - 0x30)) * 126 +
              (gbk_third - 0x81)) * 10 + bite - 0x30);
         }
