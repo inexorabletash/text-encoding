@@ -1415,7 +1415,7 @@
         var code_point = null;
         if (inRange(iso2022kr_lead, 0x21, 0x46) && inRange(bite, 0x21, 0x7E)) {
           code_point = euckrCodePoint((26 + 26 + 126) * (iso2022kr_lead - 1) + 26 + 26 + bite - 1);
-        } else if (inRange(iso2022kr_lead, 0x74, 0x7E) && inRange(bite, 0x21, 0x7E)) {
+        } else if (inRange(iso2022kr_lead, 0x47, 0x7E) && inRange(bite, 0x21, 0x7E)) {
           code_point = euckrCodePoint((26 + 26 + 126) * (0xC7 - 0x81) + (iso2022kr_lead - 0x47) * 94 + (bite - 0x21));
         }
         if (code_point !== null) {
