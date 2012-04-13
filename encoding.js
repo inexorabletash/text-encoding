@@ -881,7 +881,7 @@
         var lead = hzgb2312_lead;
         hzgb2312_lead = 0x00;
         var code_point = null;
-        if (inRange(bite, 0x20, 0x7E)) {
+        if (inRange(bite, 0x21, 0x7E)) {
           code_point = gbkCodePoint((lead - 1) * 190 + (bite + 0x3F));
         }
         if (bite === 0x0A) {
