@@ -49,8 +49,10 @@
   function ByteOutputStream(bytes) {
     var pos = 0;
     return {
-      write: function(o) {
-        bytes[pos++] = o;
+      write: function(/*...*/) {
+        for (var i = 0; i < arguments.length; ++i) {
+          bytes[pos++] = arguments[i];
+        }
       }
     };
   }
@@ -378,6 +380,7 @@
                "gbk",
                "iso-ir-58",
                "x-gbk"],
+      getEncoder: function (options) { return new GBKEncoder(false, options); },
       getDecoder: function (options) { return new GBKDecoder(false, options); }
     },
 
@@ -836,6 +839,47 @@
       return decoderError(fatal);
     };
   }
+
+  /**
+   * @constructor
+   * @param {boolean} gb18030
+   * @param {{fatal: boolean}} options
+   */
+  function GBKEncoder(gb18030, options) {
+    var fatal = options.fatal;
+    this.encode = function(output_byte_stream, input_code_point_stream) {
+      var code_point = input_code_point_stream.read();
+      if (code_point === eof) {
+        return;
+      }
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      var pointer = pointerFor(code_point, indexes["gbk"]);
+      if (pointer !== null) {
+        var lead = Math.floor(pointer / 190) + 0x81;
+        var trail = pointer % 190;
+        var offset = (trail >= 0x3F) ? 0x41 : 0x40;
+        output_byte_stream.write(lead, trail + offset);
+        return;
+      }
+      if (pointer === null && !gb18030) {
+        encoderError(code_point);
+        return;
+      }
+      pointer = pointerFor(code_point, indexes["gb18030"]);
+      var byte1 = Math.floor(pointer / 10 / 126 / 10);
+      pointer = pointer - byte1 * 10 * 126 * 10;
+      var byte2 = Math.floor(pointer / 10 / 126);
+      pointer = pointer - byte2 * 10 * 126; // TODO: Typo in spec?
+      var byte3 = Math.floor(pointer / 10);
+      var byte4 = pointer - byte3 * 10;
+      output_byte_stream.write(byte1 + 0x81, byte2 + 0x30, byte3 + 0x81, byte4 + 0x30);
+    };
+  }
+
+
 
   // 9.3 hz-gb-2312
 
@@ -1496,11 +1540,9 @@
         var byte1 = code_unit >> 8;
         var byte2 = code_unit & 0xFF;
         if (utf16_be) {
-          output_byte_stream.write(byte1);
-          output_byte_stream.write(byte2);
+          output_byte_stream.write(byte1, byte2);
         } else {
-          output_byte_stream.write(byte2);
-          output_byte_stream.write(byte1);
+          output_byte_stream.write(byte2, byte1);
         }
       }
       var code_point = input_code_point_stream.read();
