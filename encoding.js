@@ -471,6 +471,7 @@
       name: "iso-2022-kr",
       labels: ["csiso2022kr",
                "iso-2022-kr"],
+      getEncoder: function (options) { return new ISO2022KREncoder(options); },
       getDecoder: function (options) { return new ISO2022KRDecoder(options); }
     },
 
@@ -831,7 +832,7 @@
         var lead = gbk_first;
         var pointer = null;
         gbk_first = 0x00;
-        var offset = bite > 0x7F ? 0x41 : 0x40;
+        var offset = bite < 0x7F ? 0x40 : 0x41;
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFE)) {
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
@@ -1474,8 +1475,11 @@
     /** @enum */
     var state = {
       ASCII: 0,
-      lead: 1,
-      trail: 2
+      escape_start: 1,
+      escape_middle: 2,
+      escape_end: 3,
+      lead: 4,
+      trail: 5
     };
     var /** @type {number} */ iso2022kr_state = state.ASCII,
         /** @type {number} */ iso2022kr_lead = 0x00;
@@ -1492,6 +1496,9 @@
           return null;
         } else if (bite === 0x0F) {
           return null;
+        } else if (bite === 0x1B) {
+          iso2022kr_state = state.escape_start;
+          return null;
         } else if (inRange(bite, 0x00, 0x7F)) {
           return bite;
         } else if (bite === eof) {
@@ -1499,6 +1506,40 @@
         } else {
           return decoderError(fatal);
         }
+      case state.escape_start:
+        if (bite === 0x24) {
+          iso2022kr_state = state.escape_middle;
+          return null;
+        }
+        if (bite !== eof) {
+          byte_pointer.offset(-1);
+        }
+        iso2022kr_state = state.ASCII;
+        return decoderError(fatal);
+      case state.escape_middle:
+        if (bite === 0x29) {
+          iso2022kr_state = state.escape_end;
+          return null;
+        }
+        if (bite === eof) {
+          byte_pointer.offset(-1);
+        } else {
+          byte_pointer.offset(-2);
+        }
+        iso2022kr_state = state.ASCII;
+        return decoderError(fatal);
+      case state.escape_end:
+        if (bite === 0x43) {
+          iso2022kr_state = state.ASCII;
+          return null;
+        }
+        if (bite === eof) {
+          byte_pointer.offset(-2);
+        } else {
+          byte_pointer.offset(-3);
+        }
+        iso2022kr_state = state.ASCII;
+        return decoderError(fatal);
       case state.lead:
         if (bite === 0x0A) {
           iso2022kr_state = state.ASCII;
@@ -1531,6 +1572,72 @@
         }
         return decoderError(fatal);
       }
+    };
+  }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function ISO2022KREncoder(options) {
+    var fatal = options.fatal;
+    /** @enum */
+    var state = {
+      ASCII: 0,
+      lead: 1
+    };
+    var /** @type {boolean} */ iso2022kr_initialization = false,
+        /** @type {number} */ iso2022kr_state = state.ASCII;
+    this.encode = function(output_byte_stream, input_code_point_stream) {
+      var code_point = input_code_point_stream.read();
+      if (code_point === eof) {
+        return;
+      }
+      if (!iso2022kr_initialization) {
+        iso2022kr_initialization = true;
+        output_byte_stream.write(0x1B, 0x24, 0x29, 0x43);
+      }
+      if (inRange(code_point, 0x0000, 0x007F) && iso2022kr_state !== state.ASCII) {
+        input_code_point_stream.offset(-1);
+        iso2022kr_state = state.ASCII;
+        output_byte_stream.write(0x0F);
+        return;
+      }
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      if (iso2022kr_state !== state.lead) {
+        input_code_point_stream.offset(-1);
+        iso2022kr_state = state.lead;
+        output_byte_stream.write(0x0E);
+        return;
+      }
+      var pointer = pointerFor(code_point, indexes["euc-kr"]);
+      if (pointer === null) {
+        encoderError(code_point);
+        return;
+      }
+      var lead, trail;
+      if (pointer < (26 + 26 + 126) * (0xC7 - 0x81)) {
+        lead = Math.floor(pointer / (26 + 26 + 126)) + 1;
+        trail = pointer % (26 + 26 + 126) - 26 - 26 + 1;
+        if (!inRange(lead, 0x21, 0x46) || !inRange(trail, 0x21, 0x7E)) {
+          encoderError(code_point);
+          return;
+        }
+        output_byte_stream.write(lead, trail);
+        return;
+      }
+      pointer = pointer - (26 + 26 + 126) * (0xC7 - 0x81);
+      lead = Math.floor(pointer / 94) + 0x47;
+      trail = pointer % 94 + 0x21;
+      if (!inRange(lead, 0x47, 0x7E) || !inRange(trail, 0x21, 0x7E)) {
+        encoderError(code_point);
+        return;
+      }
+      output_byte_stream.write(lead, trail);
+      return;
     };
   }
 
