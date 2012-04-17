@@ -66,26 +66,25 @@
       while (i < string.length) {
         var c = string.charCodeAt(i);
         if (!inRange(c, 0xD800, 0xDFFF)) {
-          i += 1;
           cps.push(c);
         } else if (inRange(c, 0xDC00, 0xDFFF)) {
-          i += 1;
           cps.push(fallback_code_point);
         } else { // (inRange(cu, 0xD800, 0xDBFF))
           if (i === n - 1) {
             cps.push(fallback_code_point);
-          }
-          var d = string.charCodeAt(i + 1);
-          if (inRange(d, 0xDC00, 0xDFFF)) {
-            var a = c & 0x3FF;
-            var b = d & 0x3FF;
-            i += 2;
-            cps.push(0x10000 + (a << 10) + b);
           } else {
-            i += 1;
-            cps.push(fallback_code_point);
+            var d = string.charCodeAt(i + 1);
+            if (inRange(d, 0xDC00, 0xDFFF)) {
+              var a = c & 0x3FF;
+              var b = d & 0x3FF;
+              i += 1;
+              cps.push(0x10000 + (a << 10) + b);
+            } else {
+              cps.push(fallback_code_point);
+            }
           }
         }
+        i += 1;
       }
       return cps;
     }());
@@ -191,7 +190,9 @@
     // The Encoding
     {
       name: 'utf-8',
-      labels: ['utf-8'],
+      labels: ['unicode-1-1-utf-8',
+               'utf-8',
+               'utf8'],
       getEncoder: function (options) { return new UTF8Encoder(options); },
       getDecoder: function (options) { return new UTF8Decoder(options); }
     },
