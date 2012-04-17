@@ -506,7 +506,15 @@
    * @param {number} code_point
    * @param {Array.<?number>} index
    */
-  function pointerFor(code_point, index) {
+  function indexCodePointFor(pointer, index) {
+    return (index || [])[pointer] || null;
+  }
+
+  /**
+   * @param {number} code_point
+   * @param {Array.<?number>} index
+   */
+  function indexPointerFor(code_point, index) {
     var pointer = index.indexOf(code_point);
     return pointer === -1 ? null : pointer;
   }
@@ -551,6 +559,27 @@
   indexes["jis0208"] = global['jis0208Index'] || [];
   indexes["jis0212"] = global['jis0212Index'] || [];
   indexes["euc-kr"] = global['euckrIndex'] || [];
+
+  /**
+   * @param {number} pointer
+   * @return {?number}
+   */
+  function indexGB18030CodePointFor(pointer) {
+    if ((pointer > 39419 && pointer < 189000) || (pointer > 1237575)) {
+      return null;
+    }
+    var offset = 0, code_point_offset = 0, index = indexes["gb18030"];
+    for (var i = 0; i < index.length; ++i) {
+      var entry = index[i];
+      if (entry[0] <= pointer) {
+        offset = entry[0];
+        code_point_offset = entry[1];
+      } else {
+        break;
+      }
+    }
+    return code_point_offset + pointer - offset;
+  }
 
 
   //
@@ -721,7 +750,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         output_byte_stream.write(code_point);
       } else {
-        var pointer = pointerFor(code_point, index);
+        var pointer = indexPointerFor(code_point, index);
         if (pointer === null) {
           encoderError(code_point);
         }
@@ -750,31 +779,6 @@
   //
   // 9. Legacy multi-byte Chinese (simplified) encodings
   //
-
-  /**
-   * @param {number} pointer
-   * @return {?number}
-   */
-  function gbkCodePoint(pointer) {
-    return indexes["gbk"][pointer] || null;
-  }
-
-  function gb18030CodePoint(pointer) {
-    if ((pointer > 39419 && pointer < 189000) || (pointer > 1237575)) {
-      return null;
-    }
-    var offset = 0, code_point_offset = 0, index = indexes["gb18030"];
-    for (var i = 0; i < index.length; ++i) {
-      var entry = index[i];
-      if (entry[0] <= pointer) {
-        offset = entry[0];
-        code_point_offset = entry[1];
-      } else {
-        break;
-      }
-    }
-    return code_point_offset + pointer - offset;
-  }
 
   // 9.1 gbk
   // 9.2 gb18030
@@ -805,7 +809,7 @@
       if (gbk_third !== 0x00) {
         code_point = null;
         if (inRange(bite, 0x30, 0x39)) {
-          code_point = gb18030CodePoint(
+          code_point = indexGB18030CodePointFor(
             (((gbk_first - 0x81) * 10 + (gbk_second - 0x30)) * 126 +
              (gbk_third - 0x81)) * 10 + bite - 0x30);
         }
@@ -840,7 +844,7 @@
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFE)) {
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
-        code_point = pointer === null ? null : gbkCodePoint(pointer);
+        code_point = pointer === null ? null : indexCodePointFor(pointer, indexes["gbk"]);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -880,7 +884,7 @@
         output_byte_stream.write(code_point);
         return;
       }
-      var pointer = pointerFor(code_point, indexes["gbk"]);
+      var pointer = indexPointerFor(code_point, indexes["gbk"]);
       if (pointer !== null) {
         var lead = Math.floor(pointer / 190) + 0x81;
         var trail = pointer % 190;
@@ -892,7 +896,7 @@
         encoderError(code_point);
         return;
       }
-      pointer = pointerFor(code_point, indexes["gb18030"]);
+      pointer = indexPointerFor(code_point, indexes["gb18030"]);
       var byte1 = Math.floor(pointer / 10 / 126 / 10);
       pointer = pointer - byte1 * 10 * 126 * 10;
       var byte2 = Math.floor(pointer / 10 / 126);
@@ -948,7 +952,7 @@
         hzgb2312_lead = 0x00;
         var code_point = null;
         if (inRange(bite, 0x21, 0x7E)) {
-          code_point = gbkCodePoint((lead - 1) * 190 + (bite + 0x3F));
+          code_point = indexCodePointFor((lead - 1) * 190 + (bite + 0x3F), indexes["gbk"]);
         }
         if (bite === 0x0A) {
           hzgb2312 = false;
@@ -1012,7 +1016,7 @@
         output_byte_stream.write(0x7E, 0x7B);
         return;
       }
-      var pointer = pointerFor(code_point, indexes["gbk"]);
+      var pointer = indexPointerFor(code_point, indexes["gbk"]);
       if (pointer === null) {
         encoderError(code_point);
         return;
@@ -1033,14 +1037,6 @@
   //
 
   // 10.1 big5
-
-  /**
-   * @param {number} pointer
-   * @return {?number}
-   */
-  function big5CodePoint(pointer) {
-    return indexes["big5"][pointer] || null;
-  }
 
   /**
    * @constructor
@@ -1090,7 +1086,7 @@
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0xA1, 0xFE)) {
           pointer = (lead - 0x81) * 157 + (bite - offset);
         }
-        var code_point = (pointer === null) ? null : big5CodePoint(pointer);
+        var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes["big5"]);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1114,22 +1110,6 @@
   //
   // 11. Legacy multi-byte Japanese encodings
   //
-
-  /**
-   * @param {number} pointer
-   * @return {?number}
-   */
-  function jis0208CodePoint(pointer) {
-    return indexes["jis0208"][pointer] || null;
-  }
-
-  /**
-   * @param {number} pointer
-   * @return {?number}
-   */
-  function jis0212CodePoint(pointer) {
-    return indexes["jis0212"][pointer] || null;
-  }
 
   // 11.1 euc.jp
 
@@ -1160,7 +1140,7 @@
         eucjp_second = 0x00;
         code_point = null;
         if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
-          code_point = jis0212CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
+          code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1, indexes["jis0212"]);
         }
         if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
@@ -1184,7 +1164,7 @@
         eucjp_first = 0x00;
         code_point = null;
         if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
-          code_point = jis0208CodePoint((lead - 0xA1) * 94 + bite - 0xA1);
+          code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1, indexes["jis0208"]);
         }
         if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
@@ -1234,7 +1214,7 @@
         return;
       }
 
-      var pointer = pointerFor(code_point, indexes["jis0208"]);
+      var pointer = indexPointerFor(code_point, indexes["jis0208"]);
       if (pointer === null) {
         encoderError(code_point);
         return;
@@ -1364,7 +1344,9 @@
         var code_point = null;
         var pointer = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
         if (inRange(iso2022jp_lead, 0x21, 0x7E) && inRange(bite, 0x21, 0x7E)) {
-          code_point = (iso2022jp_jis0212 === false) ? jis0208CodePoint(pointer) : jis0212CodePoint(pointer);
+          code_point = (iso2022jp_jis0212 === false) ?
+            indexCodePointFor(pointer, indexes["jis0208"]) :
+            codePoint(pointer, indexes["jis0212"]);
         }
         if (code_point === null) {
           return decoderError(fatal);
@@ -1413,7 +1395,7 @@
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFC)) {
           var offset = (bite < 0x7F) ? 0x40 : 0x41;
           var lead_offset = (lead < 0xA0) ? 0x81 : 0xC1;
-          var code_point = jis0208CodePoint((lead - lead_offset) * 188 + bite - offset);
+          var code_point = indexCodePointFor((lead - lead_offset) * 188 + bite - offset, indexes["jis0208"]);
           if (code_point === null) {
             return decoderError(fatal, shiftjis_fallback_code_point);
           }
@@ -1439,14 +1421,6 @@
   //
   // 12. Legacy multi-byte Korean encodings
   //
-
-  /**
-   * @param {number} pointer
-   * @return {?number}
-   */
-  function euckrCodePoint(pointer) {
-    return indexes["euc-kr"][pointer] || null;
-  }
 
   // 12.1 euc-kr
 
@@ -1487,7 +1461,7 @@
           pointer = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 + (bite - 0xA1);
         }
 
-        var code_point = (pointer === null) ? null : euckrCodePoint(pointer);
+        var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes["euc-kr"]);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1609,9 +1583,11 @@
         }
         var code_point = null;
         if (inRange(iso2022kr_lead, 0x21, 0x46) && inRange(bite, 0x21, 0x7E)) {
-          code_point = euckrCodePoint((26 + 26 + 126) * (iso2022kr_lead - 1) + 26 + 26 + bite - 1);
+          code_point = indexCodePointFor((26 + 26 + 126) * (iso2022kr_lead - 1) + 26 + 26 + bite - 1,
+                                    indexes["euc-kr"]);
         } else if (inRange(iso2022kr_lead, 0x47, 0x7E) && inRange(bite, 0x21, 0x7E)) {
-          code_point = euckrCodePoint((26 + 26 + 126) * (0xC7 - 0x81) + (iso2022kr_lead - 0x47) * 94 + (bite - 0x21));
+          code_point = indexCodePointFor((26 + 26 + 126) * (0xC7 - 0x81) + (iso2022kr_lead - 0x47) * 94 + (bite - 0x21),
+                                    indexes["euc-kr"]);
         }
         if (code_point !== null) {
           return code_point;
@@ -1660,7 +1636,7 @@
         output_byte_stream.write(0x0E);
         return;
       }
-      var pointer = pointerFor(code_point, indexes["euc-kr"]);
+      var pointer = indexPointerFor(code_point, indexes["euc-kr"]);
       if (pointer === null) {
         encoderError(code_point);
         return;
