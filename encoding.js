@@ -59,39 +59,55 @@
 
   /** @param {string} string */
   function CodePointInputStream(string) {
-    var i = 0, n = string.length;
-    return {
-      eof: function () {
-        return (i >= n);
-      },
-      read: function () {
-        if (i >= n) {
-          return eof;
-        }
-        // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
+    var pos = 0, cps = (function () {
+      var cps = [];
+      // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
+      var i = 0, n = string.length;
+      while (i < string.length) {
         var c = string.charCodeAt(i);
         if (!inRange(c, 0xD800, 0xDFFF)) {
           i += 1;
-          return c;
+          cps.push(c);
         } else if (inRange(c, 0xDC00, 0xDFFF)) {
           i += 1;
-          return fallback_code_point;
-        } else { // (inRange(c, 0xD800, 0xDBFF))
+          cps.push(fallback_code_point);
+        } else { // (inRange(cu, 0xD800, 0xDBFF))
           if (i === n - 1) {
-            i += 1;
-            return fallback_code_point;
+            cps.push(fallback_code_point);
           }
           var d = string.charCodeAt(i + 1);
           if (inRange(d, 0xDC00, 0xDFFF)) {
             var a = c & 0x3FF;
             var b = d & 0x3FF;
             i += 2;
-            return 0x10000 + (a << 10) + b;
+            cps.push(0x10000 + (a << 10) + b);
           } else {
             i += 1;
-            return fallback_code_point;
+            cps.push(fallback_code_point);
           }
         }
+      }
+      return cps;
+    }());
+
+    return {
+      eof: function () {
+        return (pos >= cps.length);
+      },
+      offset: function (n) {
+        pos += n;
+        if (pos < 0) {
+          throw new Error("Seeking past start of the buffer");
+        }
+        if (pos > cps.length) {
+          throw new Error("Seeking past EOF");
+        }
+      },
+      read: function () {
+        if (pos >= cps.length) {
+          return eof;
+        }
+        return cps[pos++];
       }
     };
   }
@@ -387,12 +403,14 @@
     {
       name: "gb18030",
       labels: ["gb18030"],
+      getEncoder: function (options) { return new GBKEncoder(true, options); },
       getDecoder: function (options) { return new GBKDecoder(true, options); }
     },
 
     {
       name: "hz-gb-2312",
       labels: ["hz-gb-2312"],
+      getEncoder: function (options) { return new HZGB2312Encoder(options); },
       getDecoder: function (options) { return new HZGB2312Decoder(options); }
     },
 
@@ -860,7 +878,7 @@
       if (pointer !== null) {
         var lead = Math.floor(pointer / 190) + 0x81;
         var trail = pointer % 190;
-        var offset = (trail >= 0x3F) ? 0x41 : 0x40;
+        var offset = trail < 0x3F ? 0x40 : 0x41;
         output_byte_stream.write(lead, trail + offset);
         return;
       }
@@ -878,8 +896,6 @@
       output_byte_stream.write(byte1 + 0x81, byte2 + 0x30, byte3 + 0x81, byte4 + 0x30);
     };
   }
-
-
 
   // 9.3 hz-gb-2312
 
@@ -956,6 +972,54 @@
       return decoderError(fatal);
     };
   }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function HZGB2312Encoder(options) {
+    var fatal = options.fatal;
+    var hzgb2312 = false;
+    this.encode = function(output_byte_stream, input_code_point_stream) {
+      var code_point = input_code_point_stream.read();
+      if (code_point === eof) {
+        return;
+      }
+      if (inRange(code_point, 0x0000, 0x007F) && hzgb2312) {
+        input_code_point_stream.offset(-1);
+        hzgb2312 = false;
+        output_byte_stream.write(0x7E, 0x7D);
+        return;
+      }
+      if (code_point === 0x007E) {
+        output_byte_stream.write(0x7E, 0x7E);
+        return;
+      }
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      if (!hzgb2312) {
+        input_code_point_stream.offset(-1);
+        hzgb2312 = true;
+        output_byte_stream.write(0x7E, 0x7B);
+        return;
+      }
+      var pointer = pointerFor(code_point, indexes["gbk"]);
+      if (pointer === null) {
+        encoderError(code_point);
+        return;
+      }
+      var lead = Math.floor(pointer / 190) + 1;
+      var trail = pointer % 190 - 0x3F;
+      if (!inRange(lead, 0x21, 0x7E) || !inRange(trail, 0x21, 0x7E)) {
+        encoderError(code_point);
+        return;
+      }
+      output_byte_stream.write(lead, trail);
+    };
+  }
+
 
   //
   // 10. Legacy multi-byte Chinese (traditional) encodings
