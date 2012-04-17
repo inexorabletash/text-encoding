@@ -432,6 +432,7 @@
       labels: ["cseucjpkdfmtjapanese",
                "euc-jp",
                "x-euc-jp"],
+      getEncoder: function (options) { return new EUCJPEncoder(options); },
       getDecoder: function (options) { return new EUCJPDecoder(options); }
     },
 
@@ -1201,6 +1202,46 @@
         return null;
       }
       return decoderError(fatal);
+    };
+  }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function EUCJPEncoder(options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, code_point_pointer) {
+      var code_point = code_point_pointer.get();
+      if (code_point === EOF_code_point) {
+        return;
+      }
+      code_point_pointer.offset(1);
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      if (code_point === 0x00A5) {
+        output_byte_stream.write(0x5C);
+        return;
+      }
+      if (code_point === 0x203E) {
+        output_byte_stream.write(0x7E);
+        return;
+      }
+      if (inRange(code_point, 0xFF61, 0xFF9F)) {
+        output_byte_stream.write(0x8E, code_point - 0xFF61 + 0xA1);
+        return;
+      }
+
+      var pointer = pointerFor(code_point, indexes["jis0208"]);
+      if (pointer === null) {
+        encoderError(code_point);
+        return;
+      }
+      var lead = Math.floor(pointer / 94) + 0xA1;
+      var trail = pointer % 94 + 0xA1;
+      output_byte_stream.write(lead, trail);
     };
   }
 
