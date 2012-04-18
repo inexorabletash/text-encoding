@@ -440,6 +440,7 @@
       name: "iso-2022-jp",
       labels: ["csiso2022jp",
                "iso-2022-jp"],
+      getEncoder: function (options) { return new ISO2022JPEncoder(options); },
       getDecoder: function (options) { return new ISO2022JPDecoder(options); }
     },
 
@@ -1368,6 +1369,72 @@
       }
     };
   }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function ISO2022JPEncoder(options) {
+    var fatal = options.fatal;
+    /** @enum */
+    var state = {
+      ASCII: 0,
+      lead: 1,
+      Katakana: 2
+    };
+    var /** @type {number */ iso2022jp_state = state.ASCII;
+    this.encode = function (output_byte_stream, code_point_pointer) {
+      var code_point = code_point_pointer.get();
+      if (code_point === EOF_code_point) {
+        return;
+      }
+      code_point_pointer.offset(1);
+      if ((inRange(code_point, 0x0000, 0x007F) || code_point === 0x00A5 || code_point === 0x203E) &&
+          iso2022jp_state !== state.ASCII) {
+        code_point_pointer.offset(-1);
+        iso2022jp_state = state.ASCII;
+        output_byte_stream.write(0x1B, 0x28, 0x42);
+        return;
+      }
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      if (code_point === 0x00A5) {
+        output_byte_stream.write(0x5C);
+        return;
+      }
+      if (code_point === 0x203E) {
+        output_byte_stream.write(0x7E);
+        return;
+      }
+      if (inRange(code_point, 0xFF61, 0xFF9F) && iso2022jp_state !== state.Katakana) {
+        code_point_pointer.offset(-1);
+        iso2022jp_state = state.Katakana;
+        output_byte_stream.write(0x1B, 0x28, 0x49);
+        return;
+      }
+      if (inRange(code_point, 0xFF61, 0xFF9F)) {
+        output_byte_stream.write(code_point - 0xFF61 - 0x21);
+        return;
+      }
+      if (iso2022jp_state !== state.lead) {
+        code_point_pointer.offset(-1);
+        iso2022jp_state = state.lead;
+        output_byte_stream.write(0x1B, 0x24, 0x42);
+        return;
+      }
+      var pointer = indexPointerFor(code_point, indexes["jis0208"]);
+      if (pointer === null) {
+        encoderError(code_point);
+        return;
+      }
+      var lead = Math.floor(pointer / 94) + 0x21;
+      var trail = pointer % 94 + 0x21;
+      output_byte_stream.write(lead, trail);
+    };
+  }
+
 
   // 11.3 shift_jis
 
