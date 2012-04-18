@@ -468,6 +468,7 @@
                "ksc5601",
                "ksc_5601",
                "windows-949"],
+      getEncoder: function (options) { return new EUCKREncoder(options); },
       getDecoder: function (options) { return new EUCKRDecoder(options); }
     },
 
@@ -1591,6 +1592,42 @@
       }
 
       return decoderError(fatal);
+    };
+  }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function EUCKREncoder(options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, code_point_pointer) {
+      var code_point = code_point_pointer.get();
+      if (code_point === EOF_code_point) {
+        return;
+      }
+      code_point_pointer.offset(1);
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      var pointer = indexPointerFor(code_point, indexes["euc-kr"]);
+      if (pointer === null) {
+        encoderError(code_point);
+        return;
+      }
+      var lead, trail;
+      if (pointer < ((26 + 26 + 126) * (0xC7 - 0x81))) {
+        lead = Math.floor(pointer / (26 + 26 + 126)) + 0x81;
+        trail = pointer % (26 + 26 + 126);
+        var offset = pointer < 26 ? 0x41 : pointer < 26 + 26 ? 0x61 : 0x81;
+        output_byte_stream.write(lead, trail + offset);
+        return;
+      }
+      pointer = pointer - (26 + 26 + 126) * (0xC7 - 0x81);
+      lead = Math.floor(pointer / 94) + 0xC7;
+      trail = pointer % 94 + 0xA1;
+      output_byte_stream.write(lead, trail);
     };
   }
 
