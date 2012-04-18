@@ -452,6 +452,7 @@
                "shift_jis",
                "windows-31j",
                "x-sjis"],
+      getEncoder: function (options) { return new ShiftJISEncoder(options); },
       getDecoder: function (options) { return new ShiftJISDecoder(options); }
     },
 
@@ -901,7 +902,7 @@
       var byte1 = Math.floor(pointer / 10 / 126 / 10);
       pointer = pointer - byte1 * 10 * 126 * 10;
       var byte2 = Math.floor(pointer / 10 / 126);
-      pointer = pointer - byte2 * 10 * 126; // TODO: Typo in spec?
+      pointer = pointer - byte2 * 10 * 126;
       var byte3 = Math.floor(pointer / 10);
       var byte4 = pointer - byte3 * 10;
       output_byte_stream.write(byte1 + 0x81, byte2 + 0x30, byte3 + 0x81, byte4 + 0x30);
@@ -1484,6 +1485,48 @@
       return decoderError(fatal);
     };
   }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function ShiftJISEncoder(options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, code_point_pointer) {
+      var code_point = code_point_pointer.get();
+      if (code_point === EOF_code_point) {
+        return;
+      }
+      code_point_pointer.offset(1);
+      if (inRange(code_point, 0x0000, 0x0080)) {
+        output_byte_stream.write(code_point);
+        return;
+      }
+      if (code_point === 0x00A5) {
+        output_byte_stream.write(0x5C);
+        return;
+      }
+      if (code_point === 0x203E) {
+        output_byte_stream.write(0x7E);
+        return;
+      }
+      if (inRange(code_point, 0xFF61, 0xFF9F)) {
+        output_byte_stream.write(code_point - 0xFF61 + 0xA1);
+        return;
+      }
+      var pointer = indexPointerFor(code_point, indexes["jis0208"]);
+      if (pointer === null) {
+        encoderError(code_point);
+        return;
+      }
+      var lead = Math.floor(pointer / 188);
+      var lead_offset = lead < 0x1F ? 0x81 : 0xC1;
+      var trail = pointer % 188;
+      var offset = trail < 0x3F ? 0x40 : 0x41;
+      output_byte_stream.write(lead + lead_offset, trail + offset);
+    };
+  }
+
 
   //
   // 12. Legacy multi-byte Korean encodings
