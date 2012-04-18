@@ -511,6 +511,7 @@
   /**
    * @param {number} code_point
    * @param {Array.<?number>} index
+   * @return {?number}
    */
   function indexCodePointFor(pointer, index) {
     return (index || [])[pointer] || null;
@@ -519,6 +520,7 @@
   /**
    * @param {number} code_point
    * @param {Array.<?number>} index
+   * @return {?number}
    */
   function indexPointerFor(code_point, index) {
     var pointer = index.indexOf(code_point);
@@ -587,6 +589,23 @@
     return code_point_offset + pointer - offset;
   }
 
+  /**
+   * @param {number} code_point
+   * @return {?number}
+   */
+  function indexGB18030PointerFor(code_point) {
+    var offset = 0, pointer_offset, index = indexes["gb18030"];
+    for (var i = 0; i < index.length; ++i) {
+      var entry = index[i];
+      if (entry[1] <= code_point) {
+        offset = entry[1];
+        pointer_offset = entry[0];
+      } else {
+        break;
+      }
+    }
+    return pointer_offset + code_point - offset;
+  }
 
   //
   // 7. The encoding
@@ -899,7 +918,7 @@
       if (pointer === null && !gb18030) {
         return encoderError(code_point);
       }
-      pointer = indexPointerFor(code_point, indexes["gb18030"]);
+      pointer = indexGB18030PointerFor(code_point);
       var byte1 = Math.floor(pointer / 10 / 126 / 10);
       pointer = pointer - byte1 * 10 * 126 * 10;
       var byte2 = Math.floor(pointer / 10 / 126);
