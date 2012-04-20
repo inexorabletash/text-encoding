@@ -9,9 +9,19 @@
    * @param {number} a
    * @param {number} min
    * @param {number} max
+   * @return {boolean}
    */
   function inRange(a, min, max) {
     return min <= a && a <= max;
+  }
+
+  /**
+   * @param {number} n
+   * @param {number} d
+   * @return {number}
+   */
+  function div(n, d) {
+    return Math.floor(n / d);
   }
 
   /** @param {Uint8Array} bytes */
@@ -709,9 +719,9 @@
         count = 3;
         offset = 0xF0;
       }
-      var result = output_byte_stream.emit(Math.floor(code_point / Math.pow(64, count)) + offset);
+      var result = output_byte_stream.emit(div(code_point, Math.pow(64, count)) + offset);
       while (count > 0) {
-        var temp = Math.floor(code_point / Math.pow(64, count - 1));
+        var temp = div(code_point, Math.pow(64, count - 1));
         result = output_byte_stream.emit(0x80 + (temp % 64));
         count -= 1;
       }
@@ -900,7 +910,7 @@
       }
       var pointer = indexPointerFor(code_point, indexes["gbk"]);
       if (pointer !== null) {
-        var lead = Math.floor(pointer / 190) + 0x81;
+        var lead = div(pointer, 190) + 0x81;
         var trail = pointer % 190;
         var offset = trail < 0x3F ? 0x40 : 0x41;
         return output_byte_stream.emit(lead, trail + offset);
@@ -909,11 +919,11 @@
         return encoderError(code_point);
       }
       pointer = indexGB18030PointerFor(code_point);
-      var byte1 = Math.floor(pointer / 10 / 126 / 10);
+        var byte1 = div(div(div(pointer, 10), 126), 10);
       pointer = pointer - byte1 * 10 * 126 * 10;
-      var byte2 = Math.floor(pointer / 10 / 126);
+      var byte2 = div(div(pointer, 10), 126);
       pointer = pointer - byte2 * 10 * 126;
-      var byte3 = Math.floor(pointer / 10);
+      var byte3 = div(pointer, 10);
       var byte4 = pointer - byte3 * 10;
       return output_byte_stream.emit(byte1 + 0x81, byte2 + 0x30, byte3 + 0x81, byte4 + 0x30);
     };
@@ -1027,7 +1037,7 @@
       if (pointer === null) {
         return encoderError(code_point);
       }
-      var lead = Math.floor(pointer / 190) + 1;
+      var lead = div(pointer, 190) + 1;
       var trail = pointer % 190 - 0x3F;
       if (!inRange(lead, 0x21, 0x7E) || !inRange(trail, 0x21, 0x7E)) {
         return encoderError(code_point);
@@ -1219,7 +1229,7 @@
       if (pointer === null) {
         return encoderError(code_point);
       }
-      var lead = Math.floor(pointer / 94) + 0xA1;
+      var lead = div(pointer, 94) + 0xA1;
       var trail = pointer % 94 + 0xA1;
       return output_byte_stream.emit(lead, trail);
     };
@@ -1420,7 +1430,7 @@
       if (pointer === null) {
         return encoderError(code_point);
       }
-      var lead = Math.floor(pointer / 94) + 0x21;
+      var lead = div(pointer, 94) + 0x21;
       var trail = pointer % 94 + 0x21;
       return output_byte_stream.emit(lead, trail);
     };
@@ -1503,7 +1513,7 @@
       if (pointer === null) {
         return encoderError(code_point);
       }
-      var lead = Math.floor(pointer / 188);
+      var lead = div(pointer, 188);
       var lead_offset = lead < 0x1F ? 0x81 : 0xC1;
       var trail = pointer % 188;
       var offset = trail < 0x3F ? 0x40 : 0x41;
@@ -1599,13 +1609,13 @@
       }
       var lead, trail;
       if (pointer < ((26 + 26 + 126) * (0xC7 - 0x81))) {
-        lead = Math.floor(pointer / (26 + 26 + 126)) + 0x81;
+        lead = div(pointer, (26 + 26 + 126)) + 0x81;
         trail = pointer % (26 + 26 + 126);
         var offset = pointer < 26 ? 0x41 : pointer < 26 + 26 ? 0x61 : 0x81;
         return output_byte_stream.emit(lead, trail + offset);
       }
       pointer = pointer - (26 + 26 + 126) * (0xC7 - 0x81);
-      lead = Math.floor(pointer / 94) + 0xC7;
+      lead = div(pointer, 94) + 0xC7;
       trail = pointer % 94 + 0xA1;
       return output_byte_stream.emit(lead, trail);
     };
@@ -1766,7 +1776,7 @@
       }
       var lead, trail;
       if (pointer < (26 + 26 + 126) * (0xC7 - 0x81)) {
-        lead = Math.floor(pointer / (26 + 26 + 126)) + 1;
+        lead = div(pointer, (26 + 26 + 126)) + 1;
         trail = pointer % (26 + 26 + 126) - 26 - 26 + 1;
         if (!inRange(lead, 0x21, 0x46) || !inRange(trail, 0x21, 0x7E)) {
           return encoderError(code_point);
@@ -1774,7 +1784,7 @@
         return output_byte_stream.emit(lead, trail);
       }
       pointer = pointer - (26 + 26 + 126) * (0xC7 - 0x81);
-      lead = Math.floor(pointer / 94) + 0x47;
+      lead = div(pointer, 94) + 0x47;
       trail = pointer % 94 + 0x21;
       if (!inRange(lead, 0x47, 0x7E) || !inRange(trail, 0x21, 0x7E)) {
         return encoderError(code_point);
