@@ -103,9 +103,6 @@
     }());
 
     return {
-      eof: function () {
-        return (pos >= cps.length);
-      },
       offset: function (n) {
         pos += n;
         if (pos < 0) {
@@ -1986,7 +1983,7 @@
       var bytes = [];
       var output_stream = ByteOutputStream(bytes);
       var input_stream = CodePointInputStream(string);
-      while (!input_stream.eof()) {
+      while (input_stream.get() != EOF_code_point) {
         this._encoder.encode(output_stream, input_stream);
       }
       if (!this._streaming) {
