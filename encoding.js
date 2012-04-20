@@ -1879,7 +1879,7 @@
       if (code_point <= 0xFFFF) {
         return convert_to_bytes(code_point);
       } else {
-        var lead = ((code_point - 0x10000) / 0x400) + 0xD800;
+        var lead = div((code_point - 0x10000), 0x400) + 0xD800;
         var trail = ((code_point - 0x10000) % 0x400) + 0xDC00;
         convert_to_bytes(lead);
         return convert_to_bytes(trail);
