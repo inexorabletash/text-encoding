@@ -71,10 +71,10 @@
         if (!inRange(c, 0xD800, 0xDFFF)) {
           cps.push(c);
         } else if (inRange(c, 0xDC00, 0xDFFF)) {
-          cps.push(fallback_code_point);
+          cps.push(0xFFFD);
         } else { // (inRange(cu, 0xD800, 0xDBFF))
           if (i === n - 1) {
-            cps.push(fallback_code_point);
+            cps.push(0xFFFD);
           } else {
             var d = string.charCodeAt(i + 1);
             if (inRange(d, 0xDC00, 0xDFFF)) {
@@ -83,7 +83,7 @@
               i += 1;
               cps.push(0x10000 + (a << 10) + b);
             } else {
-              cps.push(fallback_code_point);
+              cps.push(0xFFFD);
             }
           }
         }
@@ -140,8 +140,6 @@
   // 3. Terminology
   //
 
-  /** @const */ var fallback_code_point = 0xFFFD;
-
   //
   // 4. Encodings
   //
@@ -159,7 +157,7 @@
     if (fatal) {
       throw new Error("EncodingError");
     }
-    return opt_code_point || fallback_code_point;
+    return opt_code_point || 0xFFFD;
   }
 
   /**
@@ -432,7 +430,7 @@
     // Legacy multi-byte Japanese encodings
     {
       name: 'euc-jp',
-      labels: ["cseucjpkdfmtjapanese",
+      labels: ["cseucpkdfmtjapanese",
                "euc-jp",
                "x-euc-jp"],
       getEncoder: function (options) { return new EUCJPEncoder(options); },
@@ -453,6 +451,7 @@
                "ms_kanji",
                "shift-jis",
                "shift_jis",
+               "sjis",
                "windows-31j",
                "x-sjis"],
       getEncoder: function (options) { return new ShiftJISEncoder(options); },
@@ -462,11 +461,12 @@
     // Legacy multi-byte Korean encodings
     {
       name: "euc-kr",
-      labels: ["csksc56011987",
-               "csueckr",
+      labels: ["csueckr",
+               "csksc56011987",
                "euc-kr",
                "iso-ir-149",
                "korean",
+               "ks_c_5601-1987",
                "ks_c_5601-1989",
                "ksc5601",
                "ksc_5601",
@@ -636,7 +636,7 @@
       if (utf8_bytes_needed === 0) {
         if (inRange(bite, 0x00, 0x7F)) {
           return bite;
-        } else if (inRange(bite, 0xC0, 0xDF)) {
+        } else if (inRange(bite, 0xC2, 0xDF)) {
           utf8_bytes_needed = 1;
           utf8_lower_boundary = 0x80;
           utf8_code_point = bite - 0xC0;
@@ -644,18 +644,10 @@
           utf8_bytes_needed = 2;
           utf8_lower_boundary = 0x800;
           utf8_code_point = bite - 0xE0;
-        } else if (inRange(bite, 0xF0, 0xF7)) {
+        } else if (inRange(bite, 0xF0, 0xF4)) {
           utf8_bytes_needed = 3;
           utf8_lower_boundary = 0x10000;
           utf8_code_point = bite - 0xF0;
-        } else if (inRange(bite, 0xF8, 0xFB)) {
-          utf8_bytes_needed = 4;
-          utf8_lower_boundary = 0x200000;
-          utf8_code_point = bite - 0xF8;
-        } else if (inRange(bite, 0xFC, 0xFD)) {
-          utf8_bytes_needed = 5;
-          utf8_lower_boundary = 0x4000000;
-          utf8_code_point = bite - 0xFC;
         } else {
           return decoderError(fatal);
         }
@@ -681,9 +673,7 @@
       utf8_bytes_needed = 0;
       utf8_bytes_seen = 0;
       utf8_lower_boundary = 0;
-      if (code_point >= lower_boundary &&
-          code_point <= 0x10FFFF &&
-          (!inRange(code_point, 0xD800, 0xDFFF))) {
+      if (inRange(code_point, lower_boundary, 0x10FFFF) && !inRange(code_point, 0xD800, 0xDFFF)) {
         return code_point;
       }
       return decoderError(fatal);
@@ -963,7 +953,6 @@
           return 0x007E;
         }
         if (bite === 0x0A) {
-          hzgb2312_lead = 0x00;
           return null;
         }
         byte_pointer.offset(-1);
@@ -1446,7 +1435,6 @@
    */
   function ShiftJISDecoder(options) {
     var fatal = options.fatal;
-    /** @const */ var shiftjis_fallback_code_point = 0x30FB;
     var /** @type {number} */ shiftjis_lead = 0x00;
     this.decode = function (byte_pointer) {
       var bite = byte_pointer.get();
@@ -1466,7 +1454,7 @@
           var lead_offset = (lead < 0xA0) ? 0x81 : 0xC1;
           var code_point = indexCodePointFor((lead - lead_offset) * 188 + bite - offset, indexes["jis0208"]);
           if (code_point === null) {
-            return decoderError(fatal, shiftjis_fallback_code_point);
+            return decoderError(fatal);
           }
           return code_point;
         }
