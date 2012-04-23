@@ -468,7 +468,7 @@
     // Legacy multi-byte Korean encodings
     {
       name: "euc-kr",
-      labels: ["csueckr",
+      labels: ["cseuckr",
                "csksc56011987",
                "euc-kr",
                "iso-ir-149",
@@ -493,7 +493,8 @@
     // Legacy utf-16 encodings
     {
       name: 'utf-16',
-      labels: ['utf-16', 'utf-16le'],
+      labels: ['utf-16',
+               'utf-16le'],
       getEncoder: function (options) { return new UTF16Encoder(false, options); },
       getDecoder: function (options) { return new UTF16Decoder(false, options); }
     },
