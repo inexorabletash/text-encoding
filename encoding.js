@@ -431,6 +431,7 @@
                "cn-big5",
                "csbig5",
                "x-x-big5"],
+      getEncoder: function (options) { return new Big5Encoder(options); },
       getDecoder: function (options) { return new Big5Decoder(options); }
     },
 
@@ -1061,6 +1062,7 @@
         /** @type {?number} */ big5_pending = null;
 
     this.decode = function (byte_pointer) {
+      // NOTE: Hack to support emitting two code points
       if (big5_pending !== null) {
         var pending = big5_pending;
         big5_pending = null;
@@ -1079,25 +1081,22 @@
         var lead = big5_lead;
         var pointer = null;
         big5_lead = 0x00;
-        if (lead === 0x88 && bite === 0x62) {
-          big5_pending = 0x0304;
-          return 0x00CA;
-        }
-        if (lead === 0x88 && bite === 0x64) {
-          big5_pending = 0x030C;
-          return 0x00CA;
-        }
-        if (lead === 0x88 && bite === 0xA3) {
-          big5_pending = 0x0304;
-          return 0x00EA;
-        }
-        if (lead === 0x88 && bite === 0xA5) {
-          big5_pending = 0x030C;
-          return 0x00EA;
-        }
-        var offset = (bite < 0x7F) ? 0x40 : 0x62;
+        var offset = bite < 0x7F ? 0x40 : 0x62;
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0xA1, 0xFE)) {
           pointer = (lead - 0x81) * 157 + (bite - offset);
+        }
+        if (pointer === 1133) {
+          big5_pending = 0x0304;
+          return 0x00CA;
+        } else if (pointer === 1135) {
+          big5_pending = 0x030C;
+          return 0x00CA;
+        } else if (pointer === 1164) {
+          big5_pending = 0x0304;
+          return 0x00EA;
+        } else if (pointer === 1166) {
+          big5_pending = 0x030C;
+          return 0x00EA;
         }
         var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes["big5"]);
         if (pointer === null) {
@@ -1116,6 +1115,35 @@
         return null;
       }
       return decoderError(fatal);
+    };
+  }
+
+  /**
+   * @constructor
+   * @param {{fatal: boolean}} options
+   */
+  function Big5Encoder(options) {
+    var fatal = options.fatal;
+    this.encode = function (output_byte_stream, code_point_pointer) {
+      var code_point = code_point_pointer.get();
+      if (code_point === EOF_code_point) {
+        return EOF_byte;
+      }
+      code_point_pointer.offset(1);
+      if (inRange(code_point, 0x0000, 0x007F)) {
+        return output_byte_stream.emit(code_point);
+      }
+      var pointer = indexPointerFor(code_point, indexes["big5"]);
+      if (pointer === null) {
+        return encoderError(code_point);
+      }
+      var lead = div(pointer, 157) + 0x81;
+      //if (lead < 0xA1) {
+      //  return encoderError(code_point);
+      //}
+      var trail = pointer % 157;
+      var offset = trail < 0x3F ? 0x40 : 0x62;
+      return output_byte_stream.emit(lead, trail + offset);
     };
   }
 
