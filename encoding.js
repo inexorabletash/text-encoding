@@ -2060,6 +2060,15 @@
     this._streaming = false;
     this._encoder = null;
     this._options = { fatal: Boolean(options.fatal) };
+
+    if (Object.defineProperty) {
+      Object.defineProperty(
+        this, 'encoding',
+        { get: function () { return this._encoding.name; } });
+    } else {
+      this.encoding = this._encoding.name;
+    }
+
     return this;
   }
 
@@ -2093,8 +2102,6 @@
       return new Uint8Array(bytes);
     }
   };
-  Object.defineProperty(TextEncoder.prototype, 'encoding',
-    { get: function () { return this._encoding.name; } });
 
 
   /**
@@ -2112,6 +2119,15 @@
     this._streaming = false;
     this._decoder = null;
     this._options = { fatal: Boolean(options.fatal) };
+
+    if (Object.defineProperty) {
+      Object.defineProperty(
+        this, 'encoding',
+        { get: function () { return this._encoding.name; } });
+    } else {
+      this.encoding = this._encoding.name;
+    }
+
     return this;
   }
 
@@ -2165,8 +2181,6 @@
       return output_stream.string();
     }
   };
-  Object.defineProperty(TextDecoder.prototype, 'encoding',
-    { get: function () { return this._encoding.name; } });
 
   global['TextEncoder'] = global['TextEncoder'] || TextEncoder;
   global['TextDecoder'] = global['TextDecoder'] || TextDecoder;
