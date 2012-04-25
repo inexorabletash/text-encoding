@@ -1704,7 +1704,7 @@
       if (pointer < ((26 + 26 + 126) * (0xC7 - 0x81))) {
         lead = div(pointer, (26 + 26 + 126)) + 0x81;
         trail = pointer % (26 + 26 + 126);
-        var offset = pointer < 26 ? 0x41 : pointer < 26 + 26 ? 0x61 : 0x81;
+        var offset = trail < 26 ? 0x41 : trail < 26 + 26 ? 0x47 : 0x4D;
         return output_byte_stream.emit(lead, trail + offset);
       }
       pointer = pointer - (26 + 26 + 126) * (0xC7 - 0x81);
