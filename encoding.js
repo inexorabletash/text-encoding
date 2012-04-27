@@ -669,7 +669,7 @@
 
   /**
    * @param {number} code_point
-   * @return {?number}
+   * @return {number}
    */
   function indexGB18030PointerFor(code_point) {
     var /** @type {number} */ offset = 0,
@@ -998,9 +998,6 @@
         return encoderError(code_point);
       }
       pointer = indexGB18030PointerFor(code_point);
-      if (pointer === null) {
-        return encoderError(code_point);
-      }
       var byte1 = div(div(div(pointer, 10), 126), 10);
       pointer = pointer - byte1 * 10 * 126 * 10;
       var byte2 = div(div(pointer, 10), 126);
