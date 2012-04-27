@@ -24,13 +24,32 @@
     return Math.floor(n / d);
   }
 
+
+  //
+  // Implementation of Encoding Standard
+  //
+
+  //
+  // 3. Terminology
+  //
+
+  //
+  // 4. Encodings
+  //
+
+  /** @const */ var EOF_byte = -1;
+  /** @const */ var EOF_code_point = -1;
+
   /** @param {Uint8Array} bytes */
   function ByteInputStream(bytes) {
+    /** @type {number} */
     var pos = 0;
     return {
+      /** @return {number} */
       get: function () {
-        return (pos >= bytes.length) ? EOF_byte : bytes[pos];
+        return (pos >= bytes.length) ? EOF_byte : Number(bytes[pos]);
       },
+      /** @param {number} n */
       offset: function (n) {
         pos += n;
         if (pos < 0) {
@@ -40,13 +59,17 @@
           throw new Error("Seeking past EOF");
         }
       },
+      /**
+       * @param {Array.<number>} test
+       * @return {boolean}
+       */
       match: function (test) {
         if (test.length > pos + bytes.length) {
           return false;
         }
         var i;
         for (i = 0; i < test.length; i += 1) {
-          if (bytes[pos + i] !== test[i]) {
+          if (Number(bytes[pos + i]) !== test[i]) {
             return false;
           }
         }
@@ -57,12 +80,18 @@
 
   /** @param {Array.<number>} bytes */
   function ByteOutputStream(bytes) {
+    /** @type {number} */
     var pos = 0;
     return {
-      emit: function (/*...*/) {
-        var last;
+      /**
+       * @param {...number} var_args
+       * @return {number}
+       */
+      emit: function (var_args) {
+        /** @type {number} */
+        var last = EOF_byte;
         for (var i = 0; i < arguments.length; ++i) {
-          last = arguments[i];
+          last = Number(arguments[i]);
           bytes[pos++] = last;
         }
         return last;
@@ -75,7 +104,7 @@
     /** @type {number} */
     var pos = 0;
     /** @type {Array.<number>} */
-    var cps = (function () {
+    var cps = (/** @return {Array.<number>} */function () {
       /** @type {Array.<number>} */
       var cps = [];
       // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
@@ -107,6 +136,7 @@
     }());
 
     return {
+      /** @param {number} n */
       offset: function (n) {
         pos += n;
         if (pos < 0) {
@@ -116,6 +146,7 @@
           throw new Error("Seeking past EOF");
         }
       },
+      /** @return {number} */
       get: function () {
         if (pos >= cps.length) {
           return EOF_code_point;
@@ -144,22 +175,6 @@
       }
     };
   }
-
-  //
-  // Implementation of Encoding Standard
-  //
-
-  //
-  // 3. Terminology
-  //
-
-  //
-  // 4. Encodings
-  //
-
-  /** @const */ var EOF_byte = -1;
-  /** @const */ var EOF_code_point = -1;
-
 
   /**
    * @param {boolean} fatal
@@ -191,11 +206,7 @@
     throw new Error("EncodingError: Unknown encoding: " + label);
   }
 
-  /** @type {Array.<
-   *          {encodings: Array.<{name:string,labels:Array.<string>}>},
-   *          {heading: string}
-   *        >}
-   */
+  /** @type {Array.<{encodings: Array.<{name:string,labels:Array.<string>}>,heading: string}>} */
   var encodings = [
     {
       "encodings": [
@@ -584,25 +595,28 @@
 
   encodings.push({
     "encodings": [{
-        name: 'binary',
-        labels: ['binary'],
-        getEncoder: function (options) { return new BinaryEncoder(options); },
-        getDecoder: function (options) { return new BinaryDecoder(options); }
+      "name": "binary",
+      "labels": ["binary"]
     }],
     "heading": "Utility encodings"
   });
 
   var name_to_encoding = {};
   var label_to_encoding = {};
-  encodings.forEach(function (category) {
-    category.encodings.forEach(function (encoding) {
-      name_to_encoding[encoding.name] = encoding;
-      encoding.labels.forEach(function (label) {
-        label_to_encoding[label] = encoding;
-      });
+  encodings.forEach(
+    /** @param {{encodings: Array.<{name:string,labels:Array.<string>}>,heading:string}} category */
+    function (category) {
+      category.encodings.forEach(
+        /** @param {{name:string,labels:Array.<string>}} encoding */
+        function (encoding) {
+          name_to_encoding[encoding.name] = encoding;
+          encoding.labels.forEach(
+            /** @param {string} label */
+            function (label) {
+              label_to_encoding[label] = encoding;
+            });
+        });
     });
-  });
-
 
   //
   // 5. Indexes
@@ -638,7 +652,9 @@
     if ((pointer > 39419 && pointer < 189000) || (pointer > 1237575)) {
       return null;
     }
-    var offset = 0, code_point_offset = 0, index = indexes["gb18030"];
+    var /** @type {number} */ offset = 0,
+        /** @type {number} */ code_point_offset = 0,
+        /** @type {Array.<Array.<number>>} */ index = indexes["gb18030"];
     for (var i = 0; i < index.length; ++i) {
       var entry = index[i];
       if (entry[0] <= pointer) {
@@ -656,7 +672,9 @@
    * @return {?number}
    */
   function indexGB18030PointerFor(code_point) {
-    var offset = 0, pointer_offset, index = indexes["gb18030"];
+    var /** @type {number} */ offset = 0,
+        /** @type {number} */ pointer_offset = 0,
+        /** @type {Array.<Array.<number>>} */ index = indexes["gb18030"];
     for (var i = 0; i < index.length; ++i) {
       var entry = index[i];
       if (entry[1] <= code_point) {
@@ -2016,6 +2034,8 @@
   // Implementation of Text Encoding Web API
   //
 
+  name_to_encoding['binary'].getEncoder = function (options) { return new BinaryEncoder(options); };
+  name_to_encoding['binary'].getDecoder = function (options) { return new BinaryDecoder(options); };
 
   /**
    * @constructor
