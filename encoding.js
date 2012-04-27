@@ -72,7 +72,11 @@
 
   /** @param {string} string */
   function CodePointInputStream(string) {
-    var pos = 0, cps = (function () {
+    /** @type {number} */
+    var pos = 0;
+    /** @type {Array.<number>} */
+    var cps = (function () {
+      /** @type {Array.<number>} */
       var cps = [];
       // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
       var i = 0, n = string.length;
@@ -122,11 +126,13 @@
   }
 
   function CodePointOutputStream() {
+    /** @type {string} */
     var string = '';
     return {
       string: function () {
         return string;
       },
+      /** @param {number} c */
       emit: function (c) {
         if (c <= 0xFFFF) {
           string += String.fromCharCode(c);
@@ -603,7 +609,7 @@
   //
 
   /**
-   * @param {number} code_point
+   * @param {number} pointer
    * @param {Array.<?number>} index
    * @return {?number}
    */
@@ -681,6 +687,7 @@
         /** @type {number} */ utf8_bytes_needed = 0,
         /** @type {number} */ utf8_bytes_seen = 0,
         /** @type {number} */ utf8_lower_boundary = 0;
+
     this.decode = function (byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte) {
@@ -973,7 +980,10 @@
         return encoderError(code_point);
       }
       pointer = indexGB18030PointerFor(code_point);
-        var byte1 = div(div(div(pointer, 10), 126), 10);
+      if (pointer === null) {
+        return encoderError(code_point);
+      }
+      var byte1 = div(div(div(pointer, 10), 126), 10);
       pointer = pointer - byte1 * 10 * 126 * 10;
       var byte2 = div(div(pointer, 10), 126);
       pointer = pointer - byte2 * 10 * 126;
@@ -1445,7 +1455,7 @@
         if (inRange(iso2022jp_lead, 0x21, 0x7E) && inRange(bite, 0x21, 0x7E)) {
           code_point = (iso2022jp_jis0212 === false) ?
             indexCodePointFor(pointer, indexes["jis0208"]) :
-            codePoint(pointer, indexes["jis0212"]);
+            indexCodePointFor(pointer, indexes["jis0212"]);
         }
         if (code_point === null) {
           return decoderError(fatal);
@@ -1480,7 +1490,7 @@
       lead: 1,
       Katakana: 2
     };
-    var /** @type {number */ iso2022jp_state = state.ASCII;
+    var /** @type {number} */ iso2022jp_state = state.ASCII;
     this.encode = function (output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {

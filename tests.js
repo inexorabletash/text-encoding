@@ -5,7 +5,7 @@ function arrayEqual(a, b, msg) {
   equal(a.length, b.length, msg + " - array length");
   for (var i = 0; i < a.length; i += 1) {
     // equal() is too slow to call each time
-    if (a[i] !== b[i]) { equal(a[i], b[i], msg + " - array index: " + String(i) ); }
+    if (a[i] !== b[i]) { equal(a[i], b[i], msg + " - first array index: " + String(i) ); return; }
   }
   ok(true, msg);
 }
