@@ -26,7 +26,8 @@
 
 
   //
-  // Implementation of Encoding Standard
+  // Implementation of Encoding specification
+  // http://dvcs.w3.org/hg/encoding/raw-file/tip/Overview.html
   //
 
   //
