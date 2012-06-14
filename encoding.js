@@ -1,5 +1,5 @@
 (function (global) {
-  "use strict";
+  'use strict';
 
   //
   // Utilities
@@ -56,10 +56,10 @@
       offset: function (n) {
         pos += n;
         if (pos < 0) {
-          throw new Error("Seeking past start of the buffer");
+          throw new Error('Seeking past start of the buffer');
         }
         if (pos > bytes.length) {
-          throw new Error("Seeking past EOF");
+          throw new Error('Seeking past EOF');
         }
       },
       /**
@@ -147,10 +147,10 @@
       offset: function (n) {
         pos += n;
         if (pos < 0) {
-          throw new Error("Seeking past start of the buffer");
+          throw new Error('Seeking past start of the buffer');
         }
         if (pos > cps.length) {
-          throw new Error("Seeking past EOF");
+          throw new Error('Seeking past EOF');
         }
       },
       /** @return {number} Get the next code point from the stream. */
@@ -190,7 +190,7 @@
    */
   function decoderError(fatal, opt_code_point) {
     if (fatal) {
-      throw new Error("EncodingError");
+      throw new Error('EncodingError');
     }
     return opt_code_point || 0xFFFD;
   }
@@ -199,7 +199,7 @@
    * @param {number} code_point The code point that could not be encoded.
    */
   function encoderError(code_point) {
-    throw new Error("EncodingError");
+    throw new Error('EncodingError');
   }
 
   /**
@@ -210,7 +210,7 @@
     if (Object.prototype.hasOwnProperty.call(label_to_encoding, label)) {
       return label_to_encoding[label];
     }
-    throw new Error("EncodingError: Unknown encoding: " + label);
+    throw new Error('EncodingError: Unknown encoding: ' + label);
   }
 
   /** @type {Array.<{encodings: Array.<{name:string,labels:Array.<string>}>,heading: string}>} */
@@ -649,7 +649,7 @@
   }
 
   /** @type {Object.<string, (Array.<number>|Array.<Array.<number>>)>} */
-  var indexes = global["encoding-indexes"] || {};
+  var indexes = global['encoding-indexes'] || {};
 
   /**
    * @param {number} pointer The |pointer| to search for in the gb18030 index.
@@ -661,7 +661,7 @@
     }
     var /** @type {number} */ offset = 0,
         /** @type {number} */ code_point_offset = 0,
-        /** @type {Array.<Array.<number>>} */ index = indexes["gb18030"];
+        /** @type {Array.<Array.<number>>} */ index = indexes['gb18030'];
     var i;
     for (i = 0; i < index.length; ++i) {
       var entry = index[i];
@@ -682,7 +682,7 @@
   function indexGB18030PointerFor(code_point) {
     var /** @type {number} */ offset = 0,
         /** @type {number} */ pointer_offset = 0,
-        /** @type {Array.<Array.<number>>} */ index = indexes["gb18030"];
+        /** @type {Array.<Array.<number>>} */ index = indexes['gb18030'];
     var i;
     for (i = 0; i < index.length; ++i) {
       var entry = index[i];
@@ -810,8 +810,8 @@
     };
   }
 
-  name_to_encoding["utf-8"].getEncoder = function (options) { return new UTF8Encoder(options); };
-  name_to_encoding["utf-8"].getDecoder = function (options) { return new UTF8Decoder(options); };
+  name_to_encoding['utf-8'].getEncoder = function (options) { return new UTF8Encoder(options); };
+  name_to_encoding['utf-8'].getDecoder = function (options) { return new UTF8Decoder(options); };
 
   //
   // 8. Legacy single-byte encodings
@@ -866,12 +866,12 @@
   }
 
   (function () {
-    ["ibm864", "ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4",
-     "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10",
-     "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r",
-     "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251",
-     "windows-1252", "windows-1253", "windows-1254", "windows-1255",
-     "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic"
+    ['ibm864', 'ibm866', 'iso-8859-2', 'iso-8859-3', 'iso-8859-4',
+     'iso-8859-5', 'iso-8859-6', 'iso-8859-7', 'iso-8859-8', 'iso-8859-10',
+     'iso-8859-13', 'iso-8859-14', 'iso-8859-15', 'iso-8859-16', 'koi8-r',
+     'koi8-u', 'macintosh', 'windows-874', 'windows-1250', 'windows-1251',
+     'windows-1252', 'windows-1253', 'windows-1254', 'windows-1255',
+     'windows-1256', 'windows-1257', 'windows-1258', 'x-mac-cyrillic'
     ].forEach(
       function (name) {
         var encoding = name_to_encoding[name];
@@ -949,7 +949,7 @@
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFE)) {
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
-        code_point = pointer === null ? null : indexCodePointFor(pointer, indexes["gbk"]);
+        code_point = pointer === null ? null : indexCodePointFor(pointer, indexes['gbk']);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -988,7 +988,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, indexes["gbk"]);
+      var pointer = indexPointerFor(code_point, indexes['gbk']);
       if (pointer !== null) {
         var lead = div(pointer, 190) + 0x81;
         var trail = pointer % 190;
@@ -1009,12 +1009,12 @@
     };
   }
 
-  name_to_encoding["gbk"].getEncoder = function (options) { return new GBKEncoder(false, options); };
-  name_to_encoding["gbk"].getDecoder = function (options) { return new GBKDecoder(false, options); };
+  name_to_encoding['gbk'].getEncoder = function (options) { return new GBKEncoder(false, options); };
+  name_to_encoding['gbk'].getDecoder = function (options) { return new GBKDecoder(false, options); };
 
   // 9.2 gb18030
-  name_to_encoding["gb18030"].getEncoder = function (options) { return new GBKEncoder(true, options); };
-  name_to_encoding["gb18030"].getDecoder = function (options) { return new GBKDecoder(true, options); };
+  name_to_encoding['gb18030'].getEncoder = function (options) { return new GBKEncoder(true, options); };
+  name_to_encoding['gb18030'].getDecoder = function (options) { return new GBKDecoder(true, options); };
 
   // 9.3 hz-gb-2312
 
@@ -1060,7 +1060,7 @@
         hzgb2312_lead = 0x00;
         var code_point = null;
         if (inRange(bite, 0x21, 0x7E)) {
-          code_point = indexCodePointFor((lead - 1) * 190 + (bite + 0x3F), indexes["gbk"]);
+          code_point = indexCodePointFor((lead - 1) * 190 + (bite + 0x3F), indexes['gbk']);
         }
         if (bite === 0x0A) {
           hzgb2312 = false;
@@ -1120,7 +1120,7 @@
         hzgb2312 = true;
         return output_byte_stream.emit(0x7E, 0x7B);
       }
-      var pointer = indexPointerFor(code_point, indexes["gbk"]);
+      var pointer = indexPointerFor(code_point, indexes['gbk']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1133,8 +1133,8 @@
     };
   }
 
-  name_to_encoding["hz-gb-2312"].getEncoder = function (options) { return new HZGB2312Encoder(options); };
-  name_to_encoding["hz-gb-2312"].getDecoder = function (options) { return new HZGB2312Decoder(options); };
+  name_to_encoding['hz-gb-2312'].getEncoder = function (options) { return new HZGB2312Encoder(options); };
+  name_to_encoding['hz-gb-2312'].getDecoder = function (options) { return new HZGB2312Decoder(options); };
 
   //
   // 10. Legacy multi-byte Chinese (traditional) encodings
@@ -1191,7 +1191,7 @@
           big5_pending = 0x030C;
           return 0x00EA;
         }
-        var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes["big5"]);
+        var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes['big5']);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1226,7 +1226,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, indexes["big5"]);
+      var pointer = indexPointerFor(code_point, indexes['big5']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1240,8 +1240,8 @@
     };
   }
 
-  name_to_encoding["big5"].getEncoder = function (options) { return new Big5Encoder(options); };
-  name_to_encoding["big5"].getDecoder = function (options) { return new Big5Decoder(options); };
+  name_to_encoding['big5'].getEncoder = function (options) { return new Big5Encoder(options); };
+  name_to_encoding['big5'].getDecoder = function (options) { return new Big5Decoder(options); };
 
 
   //
@@ -1276,7 +1276,7 @@
         eucjp_second = 0x00;
         code_point = null;
         if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
-          code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1, indexes["jis0212"]);
+          code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1, indexes['jis0212']);
         }
         if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
@@ -1300,7 +1300,7 @@
         eucjp_first = 0x00;
         code_point = null;
         if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
-          code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1, indexes["jis0208"]);
+          code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1, indexes['jis0208']);
         }
         if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
@@ -1346,7 +1346,7 @@
         return output_byte_stream.emit(0x8E, code_point - 0xFF61 + 0xA1);
       }
 
-      var pointer = indexPointerFor(code_point, indexes["jis0208"]);
+      var pointer = indexPointerFor(code_point, indexes['jis0208']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1479,8 +1479,8 @@
         var pointer = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
         if (inRange(iso2022jp_lead, 0x21, 0x7E) && inRange(bite, 0x21, 0x7E)) {
           code_point = (iso2022jp_jis0212 === false) ?
-            indexCodePointFor(pointer, indexes["jis0208"]) :
-            indexCodePointFor(pointer, indexes["jis0212"]);
+            indexCodePointFor(pointer, indexes['jis0208']) :
+            indexCodePointFor(pointer, indexes['jis0212']);
         }
         if (code_point === null) {
           return decoderError(fatal);
@@ -1550,7 +1550,7 @@
         iso2022jp_state = state.lead;
         return output_byte_stream.emit(0x1B, 0x24, 0x42);
       }
-      var pointer = indexPointerFor(code_point, indexes["jis0208"]);
+      var pointer = indexPointerFor(code_point, indexes['jis0208']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1560,8 +1560,8 @@
     };
   }
 
-  name_to_encoding["iso-2022-jp"].getEncoder = function (options) { return new ISO2022JPEncoder(options); };
-  name_to_encoding["iso-2022-jp"].getDecoder = function (options) { return new ISO2022JPDecoder(options); };
+  name_to_encoding['iso-2022-jp'].getEncoder = function (options) { return new ISO2022JPEncoder(options); };
+  name_to_encoding['iso-2022-jp'].getDecoder = function (options) { return new ISO2022JPDecoder(options); };
 
   // 11.3 shift_jis
 
@@ -1588,7 +1588,7 @@
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFC)) {
           var offset = (bite < 0x7F) ? 0x40 : 0x41;
           var lead_offset = (lead < 0xA0) ? 0x81 : 0xC1;
-          var code_point = indexCodePointFor((lead - lead_offset) * 188 + bite - offset, indexes["jis0208"]);
+          var code_point = indexCodePointFor((lead - lead_offset) * 188 + bite - offset, indexes['jis0208']);
           if (code_point === null) {
             return decoderError(fatal);
           }
@@ -1635,7 +1635,7 @@
       if (inRange(code_point, 0xFF61, 0xFF9F)) {
         return output_byte_stream.emit(code_point - 0xFF61 + 0xA1);
       }
-      var pointer = indexPointerFor(code_point, indexes["jis0208"]);
+      var pointer = indexPointerFor(code_point, indexes['jis0208']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1647,8 +1647,8 @@
     };
   }
 
-  name_to_encoding["shift_jis"].getEncoder = function (options) { return new ShiftJISEncoder(options); };
-  name_to_encoding["shift_jis"].getDecoder = function (options) { return new ShiftJISDecoder(options); };
+  name_to_encoding['shift_jis'].getEncoder = function (options) { return new ShiftJISEncoder(options); };
+  name_to_encoding['shift_jis'].getDecoder = function (options) { return new ShiftJISDecoder(options); };
 
   //
   // 12. Legacy multi-byte Korean encodings
@@ -1693,7 +1693,7 @@
           pointer = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 + (bite - 0xA1);
         }
 
-        var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes["euc-kr"]);
+        var code_point = (pointer === null) ? null : indexCodePointFor(pointer, indexes['euc-kr']);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1731,7 +1731,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, indexes["euc-kr"]);
+      var pointer = indexPointerFor(code_point, indexes['euc-kr']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1749,8 +1749,8 @@
     };
   }
 
-  name_to_encoding["euc-kr"].getEncoder = function (options) { return new EUCKREncoder(options); };
-  name_to_encoding["euc-kr"].getDecoder = function (options) { return new EUCKRDecoder(options); };
+  name_to_encoding['euc-kr'].getEncoder = function (options) { return new EUCKREncoder(options); };
+  name_to_encoding['euc-kr'].getDecoder = function (options) { return new EUCKRDecoder(options); };
 
   // 12.2 iso-2022-kr
 
@@ -1857,10 +1857,10 @@
         var code_point = null;
         if (inRange(iso2022kr_lead, 0x21, 0x46) && inRange(bite, 0x21, 0x7E)) {
           code_point = indexCodePointFor((26 + 26 + 126) * (iso2022kr_lead - 1) + 26 + 26 + bite - 1,
-                                    indexes["euc-kr"]);
+                                    indexes['euc-kr']);
         } else if (inRange(iso2022kr_lead, 0x47, 0x7E) && inRange(bite, 0x21, 0x7E)) {
           code_point = indexCodePointFor((26 + 26 + 126) * (0xC7 - 0x81) + (iso2022kr_lead - 0x47) * 94 + (bite - 0x21),
-                                    indexes["euc-kr"]);
+                                    indexes['euc-kr']);
         }
         if (code_point !== null) {
           return code_point;
@@ -1906,7 +1906,7 @@
         iso2022kr_state = state.lead;
         return output_byte_stream.emit(0x0E);
       }
-      var pointer = indexPointerFor(code_point, indexes["euc-kr"]);
+      var pointer = indexPointerFor(code_point, indexes['euc-kr']);
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1929,8 +1929,8 @@
     };
   }
 
-  name_to_encoding["iso-2022-kr"].getEncoder = function (options) { return new ISO2022KREncoder(options); };
-  name_to_encoding["iso-2022-kr"].getDecoder = function (options) { return new ISO2022KRDecoder(options); };
+  name_to_encoding['iso-2022-kr'].getEncoder = function (options) { return new ISO2022KREncoder(options); };
+  name_to_encoding['iso-2022-kr'].getDecoder = function (options) { return new ISO2022KRDecoder(options); };
 
 
   //
@@ -2094,7 +2094,7 @@
 
   /**
    * @constructor
-   * @param {string=} opt_encoding The label of the encoding; defaults to "utf-8".
+   * @param {string=} opt_encoding The label of the encoding; defaults to 'utf-8'.
    * @param {{fatal: boolean}=} options
    */
   function TextEncoder(opt_encoding, options) {
@@ -2125,7 +2125,7 @@
      * @param {{stream: boolean}=} options
      */
     encode: function encode(opt_string, options) {
-      opt_string = opt_string ? String(opt_string) : "";
+      opt_string = opt_string ? String(opt_string) : '';
       options = Object(options);
       // TODO: any options?
       if (!this._streaming) {
@@ -2153,7 +2153,7 @@
 
   /**
    * @constructor
-   * @param {string=} opt_encoding The label of the encoding; defaults to "utf-8".
+   * @param {string=} opt_encoding The label of the encoding; defaults to 'utf-8'.
    * @param {{fatal: boolean}=} options
    */
   function TextDecoder(opt_encoding, options) {
@@ -2206,7 +2206,7 @@
 
       var detected = detectEncoding(this._encoding.name, input_stream);
       if (getEncoding(detected) !== this._encoding) {
-        throw new Error("BOM mismatch"); // TODO: what to do here?
+        throw new Error('BOM mismatch'); // TODO: what to do here?
       }
 
       var output_stream = CodePointOutputStream(), code_point;
