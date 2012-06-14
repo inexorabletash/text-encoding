@@ -1,4 +1,4 @@
-(function (global){
+(function (global) {
   "use strict";
 
   //
@@ -6,19 +6,19 @@
   //
 
   /**
-   * @param {number} a
-   * @param {number} min
-   * @param {number} max
-   * @return {boolean}
+   * @param {number} a The number to test.
+   * @param {number} min The minimum value in the range, inclusive.
+   * @param {number} max The maximum value in the range, inclusive.
+   * @return {boolean} True if a >= min and a <= max.
    */
   function inRange(a, min, max) {
     return min <= a && a <= max;
   }
 
   /**
-   * @param {number} n
-   * @param {number} d
-   * @return {number}
+   * @param {number} n The numerator.
+   * @param {number} d The denominator.
+   * @return {number} The result of the integer division of n by d.
    */
   function div(n, d) {
     return Math.floor(n / d);
@@ -41,16 +41,18 @@
   /** @const */ var EOF_byte = -1;
   /** @const */ var EOF_code_point = -1;
 
-  /** @param {Uint8Array} bytes */
+  /**
+   * @param {Uint8Array} bytes Array of bytes that provide the stream.
+   */
   function ByteInputStream(bytes) {
     /** @type {number} */
     var pos = 0;
     return {
-      /** @return {number} */
+      /** @return {number} Get the next byte from the stream. */
       get: function () {
         return (pos >= bytes.length) ? EOF_byte : Number(bytes[pos]);
       },
-      /** @param {number} n */
+      /** @param {number} n Number (positive or negative) by which to offset the byte pointer. */
       offset: function (n) {
         pos += n;
         if (pos < 0) {
@@ -61,8 +63,8 @@
         }
       },
       /**
-       * @param {Array.<number>} test
-       * @return {boolean}
+       * @param {Array.<number>} test Array of bytes to compare against.
+       * @return {boolean} True if the start of the stream matches the test bytes.
        */
       match: function (test) {
         if (test.length > pos + bytes.length) {
@@ -79,14 +81,15 @@
     };
   }
 
-  /** @param {Array.<number>} bytes */
+  /** @param {Array.<number>} bytes The array to write bytes into.
+   */
   function ByteOutputStream(bytes) {
     /** @type {number} */
     var pos = 0;
     return {
       /**
-       * @param {...number} var_args
-       * @return {number}
+       * @param {...number} var_args The byte or bytes to emit into the stream.
+       * @return {number} The last byte emitted.
        */
       emit: function (var_args) {
         /** @type {number} */
@@ -101,12 +104,14 @@
     };
   }
 
-  /** @param {string} string */
+  /**
+   * @param {string} string The source of code units for the stream.
+   */
   function CodePointInputStream(string) {
     /** @type {number} */
     var pos = 0;
     /** @type {Array.<number>} */
-    var cps = (/** @return {Array.<number>} */function () {
+    var cps = (/** @return {Array.<number>} Code points. */function () {
       /** @type {Array.<number>} */
       var cps = [];
       // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
@@ -138,7 +143,7 @@
     }());
 
     return {
-      /** @param {number} n */
+      /** @param {number} n The number of bytes (positive or negative) to advance the code point pointer by.*/
       offset: function (n) {
         pos += n;
         if (pos < 0) {
@@ -148,7 +153,7 @@
           throw new Error("Seeking past EOF");
         }
       },
-      /** @return {number} */
+      /** @return {number} Get the next code point from the stream. */
       get: function () {
         if (pos >= cps.length) {
           return EOF_code_point;
@@ -165,7 +170,7 @@
       string: function () {
         return string;
       },
-      /** @param {number} c */
+      /** @param {number} c The code point to encode into the stream. */
       emit: function (c) {
         if (c <= 0xFFFF) {
           string += String.fromCharCode(c);
@@ -179,9 +184,9 @@
   }
 
   /**
-   * @param {boolean} fatal
-   * @param {number=} opt_code_point
-   * @return {number}
+   * @param {boolean} fatal If true, decoding errors raise an exception.
+   * @param {number=} opt_code_point Specifies a non-standard fallback code point.
+   * @return {number} The code point to insert on a decoding error.
    */
   function decoderError(fatal, opt_code_point) {
     if (fatal) {
@@ -191,14 +196,14 @@
   }
 
   /**
-   * @param {number} code_point
+   * @param {number} code_point The code point that could not be encoded.
    */
   function encoderError(code_point) {
     throw new Error("EncodingError");
   }
 
   /**
-   * @param {string} label
+   * @param {string} label The encoding label.
    */
   function getEncoding(label) {
     label = String(label).trim().toLowerCase();
@@ -625,18 +630,18 @@
   //
 
   /**
-   * @param {number} pointer
-   * @param {Array.<?number>} index
-   * @return {?number}
+   * @param {number} pointer The |pointer| to search for.
+   * @param {Array.<?number>} index The |index| to search within.
+   * @return {?number} The code point corresponding to |pointer| in |index|, or null if |code point| is not in |index|.
    */
   function indexCodePointFor(pointer, index) {
     return (index || [])[pointer] || null;
   }
 
   /**
-   * @param {number} code_point
-   * @param {Array.<?number>} index
-   * @return {?number}
+   * @param {number} code_point The |code point| to search for.
+   * @param {Array.<?number>} index The |index| to search within.
+   * @return {?number} The first pointer corresponding to |code point| in |index|, or null if |code point| is not in |index|.
    */
   function indexPointerFor(code_point, index) {
     var pointer = index.indexOf(code_point);
@@ -647,8 +652,8 @@
   var indexes = global["encoding-indexes"] || {};
 
   /**
-   * @param {number} pointer
-   * @return {?number}
+   * @param {number} pointer The |pointer| to search for in the gb18030 index.
+   * @return {?number} The code point corresponding to |pointer| in |index|, or null if |code point| is not in the gb18030 index.
    */
   function indexGB18030CodePointFor(pointer) {
     if ((pointer > 39419 && pointer < 189000) || (pointer > 1237575)) {
@@ -671,8 +676,8 @@
   }
 
   /**
-   * @param {number} code_point
-   * @return {number}
+   * @param {number} code_point The |code point| to locate in the gb18030 index.
+   * @return {number} The first pointer corresponding to |code point| in the gb18030 index.
    */
   function indexGB18030PointerFor(code_point) {
     var /** @type {number} */ offset = 0,
@@ -814,7 +819,7 @@
 
   /**
    * @constructor
-   * @param {Array.<number>} index
+   * @param {Array.<number>} index The encoding index.
    * @param {{fatal: boolean}} options
    */
   function SingleByteDecoder(index, options) {
@@ -838,7 +843,7 @@
 
   /**
    * @constructor
-   * @param {Array.<?number>} index
+   * @param {Array.<?number>} index The encoding index.
    * @param {{fatal: boolean}} options
    */
   function SingleByteEncoder(index, options) {
@@ -885,7 +890,7 @@
 
   /**
    * @constructor
-   * @param {boolean} gb18030
+   * @param {boolean} gb18030 True if decoding gb18030, false otherwise.
    * @param {{fatal: boolean}} options
    */
   function GBKDecoder(gb18030, options) {
@@ -969,7 +974,7 @@
 
   /**
    * @constructor
-   * @param {boolean} gb18030
+   * @param {boolean} gb18030 True if decoding gb18030, false otherwise.
    * @param {{fatal: boolean}} options
    */
   function GBKEncoder(gb18030, options) {
@@ -1936,7 +1941,7 @@
 
   /**
    * @constructor
-   * @param {boolean} utf16_be
+   * @param {boolean} utf16_be True if big-endian, false if little-endian.
    * @param {{fatal: boolean}} options
    */
   function UTF16Decoder(utf16_be, options) {
@@ -1985,7 +1990,7 @@
 
   /**
    * @constructor
-   * @param {boolean} utf16_be
+   * @param {boolean} utf16_be True if big-endian, false if little-endian.
    * @param {{fatal: boolean}} options
    */
   function UTF16Encoder(utf16_be, options) {
@@ -2089,16 +2094,16 @@
 
   /**
    * @constructor
-   * @param {string=} encoding
+   * @param {string=} opt_encoding The label of the encoding; defaults to "utf-8".
    * @param {{fatal: boolean}=} options
    */
-  function TextEncoder(encoding, options) {
+  function TextEncoder(opt_encoding, options) {
     if (!this || this === global) {
-      return new TextEncoder(encoding, options);
+      return new TextEncoder(opt_encoding, options);
     }
-    encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
+    opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
-    this._encoding = getEncoding(encoding); // may throw
+    this._encoding = getEncoding(opt_encoding); // may throw
     this._streaming = false;
     this._encoder = null;
     this._options = { fatal: Boolean(options.fatal) };
@@ -2116,11 +2121,11 @@
 
   TextEncoder.prototype = {
     /**
-     * @param {string=} string
+     * @param {string=} opt_string The string to encode.
      * @param {{stream: boolean}=} options
      */
-    encode: function encode(string, options) {
-      string = string ? String(string) : "";
+    encode: function encode(opt_string, options) {
+      opt_string = opt_string ? String(opt_string) : "";
       options = Object(options);
       // TODO: any options?
       if (!this._streaming) {
@@ -2130,7 +2135,7 @@
 
       var bytes = [];
       var output_stream = ByteOutputStream(bytes);
-      var input_stream = CodePointInputStream(string);
+      var input_stream = CodePointInputStream(opt_string);
       while (input_stream.get() !== EOF_code_point) {
         this._encoder.encode(output_stream, input_stream);
       }
@@ -2148,16 +2153,16 @@
 
   /**
    * @constructor
-   * @param {string=} encoding
+   * @param {string=} opt_encoding The label of the encoding; defaults to "utf-8".
    * @param {{fatal: boolean}=} options
    */
-  function TextDecoder(encoding, options) {
+  function TextDecoder(opt_encoding, options) {
     if (!this || this === global) {
-      return new TextDecoder(encoding, options);
+      return new TextDecoder(opt_encoding, options);
     }
-    encoding = encoding ? String(encoding) : DEFAULT_ENCODING;
+    opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
-    this._encoding = getEncoding(encoding); // may throw
+    this._encoding = getEncoding(opt_encoding); // may throw
     this._streaming = false;
     this._decoder = null;
     this._options = { fatal: Boolean(options.fatal) };
@@ -2178,14 +2183,14 @@
   // (last N bytes of previous stream may need to be retained?)
   TextDecoder.prototype = {
     /**
-     * @param {ArrayBufferView=} view
+     * @param {ArrayBufferView=} opt_view The buffer of bytes to decode.
      * @param {{stream: boolean}=} options
      */
-    decode: function decode(view, options) {
-      if (view && !('buffer' in view && 'byteOffset' in view && 'byteLength' in view)) {
+    decode: function decode(opt_view, options) {
+      if (opt_view && !('buffer' in opt_view && 'byteOffset' in opt_view && 'byteLength' in opt_view)) {
         throw new TypeError('Expected ArrayBufferView');
-      } else if (!view) {
-        view = new Uint8Array(0);
+      } else if (!opt_view) {
+        opt_view = new Uint8Array(0);
       }
       options = Object(options);
 
@@ -2196,7 +2201,7 @@
 
       // TODO: encoding detection via BOM?
 
-      var bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+      var bytes = new Uint8Array(opt_view.buffer, opt_view.byteOffset, opt_view.byteLength);
       var input_stream = ByteInputStream(bytes);
 
       var detected = detectEncoding(this._encoding.name, input_stream);
