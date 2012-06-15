@@ -42,71 +42,75 @@
   /** @const */ var EOF_code_point = -1;
 
   /**
+   * @constructor
    * @param {Uint8Array} bytes Array of bytes that provide the stream.
    */
   function ByteInputStream(bytes) {
     /** @type {number} */
     var pos = 0;
-    return {
-      /** @return {number} Get the next byte from the stream. */
-      get: function() {
+
+    /** @return {number} Get the next byte from the stream. */
+    this.get = function() {
         return (pos >= bytes.length) ? EOF_byte : Number(bytes[pos]);
-      },
-      /** @param {number} n Number (positive or negative) by which to
-       *      offset the byte pointer. */
-      offset: function(n) {
-        pos += n;
-        if (pos < 0) {
-          throw new Error('Seeking past start of the buffer');
-        }
-        if (pos > bytes.length) {
-          throw new Error('Seeking past EOF');
-        }
-      },
-      /**
-       * @param {Array.<number>} test Array of bytes to compare against.
-       * @return {boolean} True if the start of the stream matches the test
-       *     bytes.
-       */
-      match: function(test) {
-        if (test.length > pos + bytes.length) {
-          return false;
-        }
-        var i;
-        for (i = 0; i < test.length; i += 1) {
-          if (Number(bytes[pos + i]) !== test[i]) {
-            return false;
-          }
-        }
-        return true;
+    };
+
+    /** @param {number} n Number (positive or negative) by which to
+     *      offset the byte pointer. */
+    this.offset = function(n) {
+      pos += n;
+      if (pos < 0) {
+        throw new Error('Seeking past start of the buffer');
+      }
+      if (pos > bytes.length) {
+        throw new Error('Seeking past EOF');
       }
     };
-  }
 
-  /** @param {Array.<number>} bytes The array to write bytes into.
-   */
-  function ByteOutputStream(bytes) {
-    /** @type {number} */
-    var pos = 0;
-    return {
-      /**
-       * @param {...number} var_args The byte or bytes to emit into the stream.
-       * @return {number} The last byte emitted.
-       */
-      emit: function(var_args) {
-        /** @type {number} */
-        var last = EOF_byte;
-        var i;
-        for (i = 0; i < arguments.length; ++i) {
-          last = Number(arguments[i]);
-          bytes[pos++] = last;
-        }
-        return last;
+    /**
+     * @param {Array.<number>} test Array of bytes to compare against.
+     * @return {boolean} True if the start of the stream matches the test
+     *     bytes.
+     */
+    this.match = function(test) {
+      if (test.length > pos + bytes.length) {
+        return false;
       }
+      var i;
+      for (i = 0; i < test.length; i += 1) {
+        if (Number(bytes[pos + i]) !== test[i]) {
+          return false;
+        }
+      }
+      return true;
     };
   }
 
   /**
+   * @constructor
+   * @param {Array.<number>} bytes The array to write bytes into.
+   */
+  function ByteOutputStream(bytes) {
+    /** @type {number} */
+    var pos = 0;
+
+    /**
+     * @param {...number} var_args The byte or bytes to emit into the stream.
+     * @return {number} The last byte emitted.
+     */
+    this.emit = function(var_args) {
+      /** @type {number} */
+      var last = EOF_byte;
+      var i;
+      for (i = 0; i < arguments.length; ++i) {
+        last = Number(arguments[i]);
+        bytes[pos++] = last;
+      }
+      return last;
+    };
+  }
+
+  /**
+   * @constructor
    * @param {string} string The source of code units for the stream.
    */
   function CodePointInputStream(string) {
@@ -144,44 +148,48 @@
       return cps;
     }());
 
-    return {
-      /** @param {number} n The number of bytes (positive or negative)
-       *      to advance the code point pointer by.*/
-      offset: function(n) {
-        pos += n;
-        if (pos < 0) {
-          throw new Error('Seeking past start of the buffer');
-        }
-        if (pos > cps.length) {
-          throw new Error('Seeking past EOF');
-        }
-      },
-      /** @return {number} Get the next code point from the stream. */
-      get: function() {
-        if (pos >= cps.length) {
-          return EOF_code_point;
-        }
-        return cps[pos];
+    /** @param {number} n The number of bytes (positive or negative)
+     *      to advance the code point pointer by.*/
+    this.offset = function(n) {
+      pos += n;
+      if (pos < 0) {
+        throw new Error('Seeking past start of the buffer');
       }
+      if (pos > cps.length) {
+        throw new Error('Seeking past EOF');
+      }
+    };
+
+
+    /** @return {number} Get the next code point from the stream. */
+    this.get = function() {
+      if (pos >= cps.length) {
+        return EOF_code_point;
+      }
+      return cps[pos];
     };
   }
 
+  /**
+   * @constructor
+   */
   function CodePointOutputStream() {
     /** @type {string} */
     var string = '';
-    return {
-      string: function() {
-        return string;
-      },
-      /** @param {number} c The code point to encode into the stream. */
-      emit: function(c) {
-        if (c <= 0xFFFF) {
-          string += String.fromCharCode(c);
-        } else {
-          c -= 0x10000;
-          string += String.fromCharCode(0xD800 + ((c >> 10) & 0x3ff));
-          string += String.fromCharCode(0xDC00 + (c & 0x3ff));
-        }
+
+    /** @return {string} The accumulated string. */
+    this.string = function() {
+      return string;
+    };
+
+    /** @param {number} c The code point to encode into the stream. */
+    this.emit = function(c) {
+      if (c <= 0xFFFF) {
+        string += String.fromCharCode(c);
+      } else {
+        c -= 0x10000;
+        string += String.fromCharCode(0xD800 + ((c >> 10) & 0x3ff));
+        string += String.fromCharCode(0xDC00 + (c & 0x3ff));
       }
     };
   }
@@ -722,6 +730,11 @@
         /** @type {number} */ utf8_bytes_seen = 0,
         /** @type {number} */ utf8_lower_boundary = 0;
 
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte) {
@@ -788,6 +801,11 @@
    */
   function UTF8Encoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -840,6 +858,11 @@
    */
   function SingleByteDecoder(index, options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte) {
@@ -864,6 +887,11 @@
    */
   function SingleByteEncoder(index, options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -918,6 +946,11 @@
     var /** @type {number} */ gbk_first = 0x00,
         /** @type {number} */ gbk_second = 0x00,
         /** @type {number} */ gbk_third = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte && gbk_first === 0x00 &&
@@ -1002,6 +1035,11 @@
    */
   function GBKEncoder(gb18030, options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1060,6 +1098,11 @@
     var fatal = options.fatal;
     var /** @type {boolean} */ hzgb2312 = false,
         /** @type {number} */ hzgb2312_lead = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte && hzgb2312_lead === 0x00) {
@@ -1133,6 +1176,11 @@
   function HZGB2312Encoder(options) {
     var fatal = options.fatal;
     var hzgb2312 = false;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1190,6 +1238,11 @@
     var /** @type {number} */ big5_lead = 0x00,
         /** @type {?number} */ big5_pending = null;
 
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       // NOTE: Hack to support emitting two code points
       if (big5_pending !== null) {
@@ -1257,6 +1310,11 @@
    */
   function Big5Encoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1302,6 +1360,11 @@
     var fatal = options.fatal;
     var /** @type {number} */ eucjp_first = 0x00,
         /** @type {number} */ eucjp_second = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte) {
@@ -1373,6 +1436,11 @@
    */
   function EUCJPEncoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1430,6 +1498,11 @@
     var /** @type {number} */ iso2022jp_state = state.ASCII,
         /** @type {boolean} */ iso2022jp_jis0212 = false,
         /** @type {number} */ iso2022jp_lead = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite !== EOF_byte) {
@@ -1566,6 +1639,11 @@
       Katakana: 2
     };
     var /** @type {number} */ iso2022jp_state = state.ASCII;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1628,6 +1706,11 @@
   function ShiftJISDecoder(options) {
     var fatal = options.fatal;
     var /** @type {number} */ shiftjis_lead = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte && shiftjis_lead === 0x00) {
@@ -1674,6 +1757,11 @@
    */
   function ShiftJISEncoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1724,6 +1812,11 @@
   function EUCKRDecoder(options) {
     var fatal = options.fatal;
     var /** @type {number} */ euckr_lead = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte && euckr_lead === 0) {
@@ -1785,6 +1878,11 @@
    */
   function EUCKREncoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -1838,6 +1936,11 @@
     };
     var /** @type {number} */ iso2022kr_state = state.ASCII,
         /** @type {number} */ iso2022kr_lead = 0x00;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite !== EOF_byte) {
@@ -1955,6 +2058,11 @@
     };
     var /** @type {boolean} */ iso2022kr_initialization = false,
         /** @type {number} */ iso2022kr_state = state.ASCII;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -2025,6 +2133,11 @@
     var fatal = options.fatal;
     var /** @type {?number} */ utf16_lead_byte = null,
         /** @type {?number} */ utf16_lead_surrogate = null;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte && utf16_lead_byte === null &&
@@ -2075,6 +2188,11 @@
    */
   function UTF16Encoder(utf16_be, options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       function convert_to_bytes(code_unit) {
         var byte1 = code_unit >> 8;
@@ -2145,6 +2263,11 @@
    */
   function BinaryEncoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteOutputStream} output_byte_stream Output byte stream.
+     * @param {CodePointInputStream} code_point_pointer Input stream.
+     * @return {number} The last byte emitted.
+     */
     this.encode = function(output_byte_stream, code_point_pointer) {
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
@@ -2164,6 +2287,11 @@
    */
   function BinaryDecoder(options) {
     var fatal = options.fatal;
+    /**
+     * @param {ByteInputStream} byte_pointer
+     * @return {?number} The next code point decoded, or null if not enough
+     *     data exists in the input stream to decode a complete code point.
+     */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
       if (bite === EOF_byte) {
@@ -2196,9 +2324,13 @@
     }
     opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
+    /** @private */
     this._encoding = getEncoding(opt_encoding); // may throw
+    /** @private @type {boolean} */
     this._streaming = false;
+    /** @private */
     this._encoder = null;
+    /** @private @type {{fatal: boolean}=} */
     this._options = { fatal: Boolean(options.fatal) };
 
     if (Object.defineProperty) {
@@ -2227,8 +2359,8 @@
       this._streaming = Boolean(options.stream);
 
       var bytes = [];
-      var output_stream = ByteOutputStream(bytes);
-      var input_stream = CodePointInputStream(opt_string);
+      var output_stream = new ByteOutputStream(bytes);
+      var input_stream = new CodePointInputStream(opt_string);
       while (input_stream.get() !== EOF_code_point) {
         this._encoder.encode(output_stream, input_stream);
       }
@@ -2256,9 +2388,13 @@
     }
     opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
+    /** @private */
     this._encoding = getEncoding(opt_encoding); // may throw
+    /** @private @type {boolean} */
     this._streaming = false;
+    /** @private */
     this._decoder = null;
+    /** @private @type {{fatal: boolean}=} */
     this._options = { fatal: Boolean(options.fatal) };
 
     if (Object.defineProperty) {
@@ -2299,14 +2435,14 @@
       var bytes = new Uint8Array(opt_view.buffer,
                                  opt_view.byteOffset,
                                  opt_view.byteLength);
-      var input_stream = ByteInputStream(bytes);
+      var input_stream = new ByteInputStream(bytes);
 
       var detected = detectEncoding(this._encoding.name, input_stream);
       if (getEncoding(detected) !== this._encoding) {
         throw new Error('BOM mismatch'); // TODO: what to do here?
       }
 
-      var output_stream = CodePointOutputStream(), code_point;
+      var output_stream = new CodePointOutputStream(), code_point;
       while (input_stream.get() !== EOF_byte) {
         code_point = this._decoder.decode(input_stream);
         if (code_point !== null && code_point !== EOF_code_point) {
