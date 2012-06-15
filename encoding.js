@@ -612,14 +612,6 @@
     }
   ];
 
-  encodings.push({
-    "encodings": [{
-      "name": "binary",
-      "labels": ["binary"]
-    }],
-    "heading": "Utility encodings"
-  });
-
   var name_to_encoding = {};
   var label_to_encoding = {};
   encodings.forEach(
@@ -2256,59 +2248,6 @@
   //
   // Implementation of Text Encoding Web API
   //
-
-  /**
-   * @constructor
-   * @param {{fatal: boolean}} options
-   */
-  function BinaryEncoder(options) {
-    var fatal = options.fatal;
-    /**
-     * @param {ByteOutputStream} output_byte_stream Output byte stream.
-     * @param {CodePointInputStream} code_point_pointer Input stream.
-     * @return {number} The last byte emitted.
-     */
-    this.encode = function(output_byte_stream, code_point_pointer) {
-      var code_point = code_point_pointer.get();
-      if (code_point === EOF_code_point) {
-        return EOF_byte;
-      }
-      code_point_pointer.offset(1);
-      if (code_point > 0xff) {
-        return encoderError(code_point);
-      }
-      return output_byte_stream.emit(code_point);
-    };
-  }
-
-  /**
-   * @constructor
-   * @param {{fatal: boolean}} options
-   */
-  function BinaryDecoder(options) {
-    var fatal = options.fatal;
-    /**
-     * @param {ByteInputStream} byte_pointer
-     * @return {?number} The next code point decoded, or null if not enough
-     *     data exists in the input stream to decode a complete code point.
-     */
-    this.decode = function(byte_pointer) {
-      var bite = byte_pointer.get();
-      if (bite === EOF_byte) {
-        return EOF_code_point;
-      }
-      byte_pointer.offset(1);
-      return bite;
-    };
-  }
-
-  name_to_encoding['binary'].getEncoder = function(options) {
-    return new BinaryEncoder(options);
-  };
-  name_to_encoding['binary'].getDecoder = function(options) {
-    return new BinaryDecoder(options);
-  };
-
 
   /** @const */ var DEFAULT_ENCODING = 'utf-8';
 
