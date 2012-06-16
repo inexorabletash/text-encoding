@@ -114,10 +114,11 @@
    * @param {string} string The source of code units for the stream.
    */
   function CodePointInputStream(string) {
-    /** @type {number} */
-    var pos = 0;
-    /** @type {Array.<number>} */
-    var cps = (/** @return {Array.<number>} Code points. */function() {
+    /**
+     * @param {string} string
+     * @return {Array.<number>} Code points.
+     */
+    function stringToCodePoints(string) {
       /** @type {Array.<number>} */
       var cps = [];
       // Based on http://www.w3.org/TR/WebIDL/#idl-DOMString
@@ -146,7 +147,12 @@
         i += 1;
       }
       return cps;
-    }());
+    }
+
+    /** @type {number} */
+    var pos = 0;
+    /** @type {Array.<number>} */
+    var cps = stringToCodePoints(string);
 
     /** @param {number} n The number of bytes (positive or negative)
      *      to advance the code point pointer by.*/
@@ -215,6 +221,7 @@
 
   /**
    * @param {string} label The encoding label.
+   * @return {{name:string,labels:Array.<string>}}
    */
   function getEncoding(label) {
     label = String(label).trim().toLowerCase();
@@ -2229,6 +2236,10 @@
 
 
   // NOTE: currently unused
+  /**
+   * @param {string} label
+   * @param {ByteInputStream} input_stream
+   */
   function detectEncoding(label, input_stream) {
     if (input_stream.match([0xFF, 0xFE])) {
       input_stream.offset(2);
