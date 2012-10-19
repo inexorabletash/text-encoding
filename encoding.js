@@ -2254,6 +2254,25 @@
     return label;
   }
 
+  /**
+   * @param {string} label The encoding label.
+   * @param {ByteInputStream} input_stream The byte stream to test.
+   */
+  function consumeBOM(label, input_stream) {
+    if (input_stream.match([0xFF, 0xFE]) && label === 'utf-16') {
+      input_stream.offset(2);
+      return;
+    }
+    if (input_stream.match([0xFE, 0xFF]) && label == 'utf-16be') {
+      input_stream.offset(2);
+      return;
+    }
+    if (input_stream.match([0xEF, 0xBB, 0xBF]) && label == 'utf-8') {
+      input_stream.offset(3);
+      return;
+    }
+  }
+
   //
   // Implementation of Text Encoding Web API
   //
@@ -2378,16 +2397,15 @@
       }
       this._streaming = Boolean(options.stream);
 
-      // TODO: encoding detection via BOM?
-
       var bytes = new Uint8Array(opt_view.buffer,
                                  opt_view.byteOffset,
                                  opt_view.byteLength);
       var input_stream = new ByteInputStream(bytes);
 
-      var detected = detectEncoding(this._encoding.name, input_stream);
-      if (getEncoding(detected) !== this._encoding) {
-        throw new Error('BOM mismatch'); // TODO: what to do here?
+      if (!this._BOMseen) {
+        // TODO: Don't do this until sufficient bytes are present
+        this._BOMseen = true;
+        consumeBOM(this._encoding.name, input_stream);
       }
 
       var output_stream = new CodePointOutputStream(), code_point;
@@ -2403,7 +2421,8 @@
           if (code_point !== null && code_point !== EOF_code_point) {
             output_stream.emit(code_point);
           }
-        } while (code_point !== EOF_code_point);
+        } while (code_point !== EOF_code_point &&
+                 input_stream.get() != EOF_byte);
         this._decoder = null;
       }
       return output_stream.string();

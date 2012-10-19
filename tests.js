@@ -31,8 +31,8 @@ function testEncodeDecode(encoding, min, max) {
           } else if (j > 0xffff) {
             // outside BMP - encode as surrogate pair
             string += String.fromCharCode(
-	      0xd800 + ((j >> 10) & 0x3ff),
-	      0xdc00 + (j & 0x3ff));
+              0xd800 + ((j >> 10) & 0x3ff),
+              0xdc00 + (j & 0x3ff));
           } else {
             string += String.fromCharCode(i);
           }
@@ -82,8 +82,8 @@ test(
         } else if (j > 0xffff) {
           // outside BMP - encode as surrogate pair
           str += String.fromCharCode(
-	    0xd800 + ((j >> 10) & 0x3ff),
-	    0xdc00 + (j & 0x3ff));
+            0xd800 + ((j >> 10) & 0x3ff),
+            0xdc00 + (j & 0x3ff));
         } else {
           str += String.fromCharCode(i);
         }
@@ -111,8 +111,8 @@ test(
         } else if (j > 0xffff) {
           // outside BMP - encode as surrogate pair
           str += String.fromCharCode(
-	    0xd800 + ((j >> 10) & 0x3ff),
-	    0xdc00 + (j & 0x3ff));
+            0xd800 + ((j >> 10) & 0x3ff),
+            0xdc00 + (j & 0x3ff));
         } else {
           str += String.fromCharCode(i);
         }
@@ -243,29 +243,36 @@ test(
 test(
   "Byte-order marks",
   function() {
-    //expect(9);
+    expect(12);
 
-    var utf8 = [0xEF, 0xBB, 0xBF, 0x7A, 0xC2, 0xA2, 0xE6, 0xB0, 0xB4, 0xF0, 0x9D, 0x84, 0x9E, 0xF4, 0x8F, 0xBF, 0xBD];
-    var utf16le = [0xff, 0xfe, 0x7A, 0x00, 0xA2, 0x00, 0x34, 0x6C, 0x34, 0xD8, 0x1E, 0xDD, 0xFF, 0xDB, 0xFD, 0xDF];
-    var utf16be = [0xfe, 0xff, 0x00, 0x7A, 0x00, 0xA2, 0x6C, 0x34, 0xD8, 0x34, 0xDD, 0x1E, 0xDB, 0xFF, 0xDF, 0xFD];
+    var utf8_bom = [0xEF, 0xBB, 0xBF];
+    var utf8 = [0x7A, 0xC2, 0xA2, 0xE6, 0xB0, 0xB4, 0xF0, 0x9D, 0x84, 0x9E, 0xF4, 0x8F, 0xBF, 0xBD];
+
+    var utf16le_bom = [0xff, 0xfe];
+    var utf16le = [0x7A, 0x00, 0xA2, 0x00, 0x34, 0x6C, 0x34, 0xD8, 0x1E, 0xDD, 0xFF, 0xDB, 0xFD, 0xDF];
+
+    var utf16be_bom = [0xfe, 0xff];
+    var utf16be = [0x00, 0x7A, 0x00, 0xA2, 0x6C, 0x34, 0xD8, 0x34, 0xDD, 0x1E, 0xDB, 0xFF, 0xDF, 0xFD];
 
     var string = "z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD"; // z, cent, CJK water, G-Clef, Private-use character
 
-    // Basic cases
+    // missing BOMs
     equal(TextDecoder('utf-8').decode(new Uint8Array(utf8)), string);
     equal(TextDecoder('utf-16le').decode(new Uint8Array(utf16le)), string);
     equal(TextDecoder('utf-16be').decode(new Uint8Array(utf16be)), string);
 
-    /*
-    // TODO: New API?
-    // Verify that BOM wins
-    equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-16le'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf8), 'utf-16be'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-8'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf16le), 'utf-16be'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-8'), string);
-    equal(stringEncoding.decode(new Uint8Array(utf16be), 'utf-16le'), string);
-    */
+    // matching BOMs
+    equal(TextDecoder('utf-8').decode(new Uint8Array(utf8_bom.concat(utf8))), string);
+    equal(TextDecoder('utf-16le').decode(new Uint8Array(utf16le_bom.concat(utf16le))), string);
+    equal(TextDecoder('utf-16be').decode(new Uint8Array(utf16be_bom.concat(utf16be))), string);
+
+    // mismatching BOMs
+    notEqual(TextDecoder('utf-8').decode(new Uint8Array(utf16le_bom.concat(utf8))), string);
+    notEqual(TextDecoder('utf-8').decode(new Uint8Array(utf16be_bom.concat(utf8))), string);
+    notEqual(TextDecoder('utf-16le').decode(new Uint8Array(utf8_bom.concat(utf16le))), string);
+    notEqual(TextDecoder('utf-16le').decode(new Uint8Array(utf16be_bom.concat(utf16le))), string);
+    notEqual(TextDecoder('utf-16be').decode(new Uint8Array(utf8_bom.concat(utf16be))), string);
+    notEqual(TextDecoder('utf-16be').decode(new Uint8Array(utf16le_bom.concat(utf16be))), string);
   });
 
 test(
