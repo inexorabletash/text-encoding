@@ -342,3 +342,21 @@ test(
       //arrayEqual(TextEncoder(encoding).encode(string), bytes, encoding);
     });
   });
+
+test(
+  "Non-fatal errors at EOF",
+  function () {
+    expect(3);
+
+    throws(function() { TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array([0xff])); });
+    // This should not hang:
+    TextDecoder("utf-8").decode(new Uint8Array([0xff]));
+
+    throws(function() { TextDecoder("utf-16", {fatal: true}).decode(new Uint8Array([0x00])); });
+    // This should not hang:
+    TextDecoder("utf-16").decode(new Uint8Array([0x00]));
+
+    throws(function() { TextDecoder("utf-16be", {fatal: true}).decode(new Uint8Array([0x00])); });
+    // This should not hang:
+    TextDecoder("utf-16be").decode(new Uint8Array([0x00]));
+  });
