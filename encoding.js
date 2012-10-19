@@ -51,7 +51,7 @@
 
     /** @return {number} Get the next byte from the stream. */
     this.get = function() {
-        return (pos >= bytes.length) ? EOF_byte : Number(bytes[pos]);
+      return (pos >= bytes.length) ? EOF_byte : Number(bytes[pos]);
     };
 
     /** @param {number} n Number (positive or negative) by which to
@@ -115,7 +115,7 @@
    */
   function CodePointInputStream(string) {
     /**
-     * @param {string} string
+     * @param {string} string Input string of UTF-16 code units.
      * @return {Array.<number>} Code points.
      */
     function stringToCodePoints(string) {
@@ -630,7 +630,7 @@
         function(encoding) {
           name_to_encoding[encoding.name] = encoding;
           encoding.labels.forEach(
-            /** @param {string} label */
+            /** @param {string} label Encoding label. */
             function(label) {
               label_to_encoding[label] = encoding;
             });
@@ -730,7 +730,7 @@
         /** @type {number} */ utf8_lower_boundary = 0;
 
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -776,7 +776,7 @@
       }
       utf8_bytes_seen += 1;
       utf8_code_point = utf8_code_point + (bite - 0x80) *
-        Math.pow(64, utf8_bytes_needed - utf8_bytes_seen);
+          Math.pow(64, utf8_bytes_needed - utf8_bytes_seen);
       if (utf8_bytes_seen !== utf8_bytes_needed) {
         return null;
       }
@@ -819,7 +819,7 @@
       }
       var count, offset;
       if (inRange(code_point, 0x0080, 0x07FF)) {
-          count = 1;
+        count = 1;
         offset = 0xC0;
       } else if (inRange(code_point, 0x0800, 0xFFFF)) {
         count = 2;
@@ -829,7 +829,7 @@
         offset = 0xF0;
       }
       var result = output_byte_stream.emit(
-        div(code_point, Math.pow(64, count)) + offset);
+          div(code_point, Math.pow(64, count)) + offset);
       while (count > 0) {
         var temp = div(code_point, Math.pow(64, count - 1));
         result = output_byte_stream.emit(0x80 + (temp % 64));
@@ -858,7 +858,7 @@
   function SingleByteDecoder(index, options) {
     var fatal = options.fatal;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -915,18 +915,16 @@
      'koi8-u', 'macintosh', 'windows-874', 'windows-1250', 'windows-1251',
      'windows-1252', 'windows-1253', 'windows-1254', 'windows-1255',
      'windows-1256', 'windows-1257', 'windows-1258', 'x-mac-cyrillic'
-    ].forEach(
-      function(name) {
-        var encoding = name_to_encoding[name];
-        var index = indexes[name];
-        encoding.getDecoder = function(options) {
-          return new SingleByteDecoder(index, options);
-        };
-        encoding.getEncoder = function(options) {
-          return new SingleByteEncoder(index, options);
-        };
-      }
-    );
+    ].forEach(function(name) {
+      var encoding = name_to_encoding[name];
+      var index = indexes[name];
+      encoding.getDecoder = function(options) {
+        return new SingleByteDecoder(index, options);
+      };
+      encoding.getEncoder = function(options) {
+        return new SingleByteEncoder(index, options);
+      };
+    });
   }());
 
   //
@@ -946,7 +944,7 @@
         /** @type {number} */ gbk_second = 0x00,
         /** @type {number} */ gbk_third = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -969,8 +967,8 @@
         code_point = null;
         if (inRange(bite, 0x30, 0x39)) {
           code_point = indexGB18030CodePointFor(
-            (((gbk_first - 0x81) * 10 + (gbk_second - 0x30)) * 126 +
-             (gbk_third - 0x81)) * 10 + bite - 0x30);
+              (((gbk_first - 0x81) * 10 + (gbk_second - 0x30)) * 126 +
+               (gbk_third - 0x81)) * 10 + bite - 0x30);
         }
         gbk_first = 0x00;
         gbk_second = 0x00;
@@ -1004,7 +1002,7 @@
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
         code_point = pointer === null ? null :
-          indexCodePointFor(pointer, indexes['gbk']);
+            indexCodePointFor(pointer, indexes['gbk']);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1098,7 +1096,7 @@
     var /** @type {boolean} */ hzgb2312 = false,
         /** @type {number} */ hzgb2312_lead = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -1238,7 +1236,7 @@
         /** @type {?number} */ big5_pending = null;
 
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte steram to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -1283,7 +1281,7 @@
           return 0x00EA;
         }
         var code_point = (pointer === null) ? null :
-              indexCodePointFor(pointer, indexes['big5']);
+            indexCodePointFor(pointer, indexes['big5']);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1360,7 +1358,7 @@
     var /** @type {number} */ eucjp_first = 0x00,
         /** @type {number} */ eucjp_second = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -1498,7 +1496,7 @@
         /** @type {boolean} */ iso2022jp_jis0212 = false,
         /** @type {number} */ iso2022jp_lead = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -1706,7 +1704,7 @@
     var fatal = options.fatal;
     var /** @type {number} */ shiftjis_lead = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -1812,7 +1810,7 @@
     var fatal = options.fatal;
     var /** @type {number} */ euckr_lead = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -1936,7 +1934,7 @@
     var /** @type {number} */ iso2022kr_state = state.ASCII,
         /** @type {number} */ iso2022kr_lead = 0x00;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -2133,7 +2131,7 @@
     var /** @type {?number} */ utf16_lead_byte = null,
         /** @type {?number} */ utf16_lead_surrogate = null;
     /**
-     * @param {ByteInputStream} byte_pointer
+     * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
      *     data exists in the input stream to decode a complete code point.
      */
@@ -2237,8 +2235,8 @@
 
   // NOTE: currently unused
   /**
-   * @param {string} label
-   * @param {ByteInputStream} input_stream
+   * @param {string} label The encoding label.
+   * @param {ByteInputStream} input_stream The byte stream to test.
    */
   function detectEncoding(label, input_stream) {
     if (input_stream.match([0xFF, 0xFE])) {
