@@ -1,15 +1,5 @@
-// NOTE: relies on http://docs.jquery.com/QUnit
-
-function arrayEqual(a, b, msg) {
-  // deepEqual() is too picky
-  equal(a.length, b.length, msg + " - array length");
-  for (var i = 0; i < a.length; i += 1) {
-    // equal() is too slow to call each time
-    if (a[i] !== b[i]) { equal(a[i], b[i], msg + " - first array index: " + String(i) ); return; }
-  }
-  ok(true, msg);
-}
-
+// NOTE: Requires testharness.js
+// http://www.w3.org/2008/webapps/wiki/Harness
 
 function testEncodeDecode(encoding, min, max) {
   function cpname(n) {
@@ -19,7 +9,6 @@ function testEncodeDecode(encoding, min, max) {
   }
 
   test(
-    encoding + " - Encode/Decode Range " + cpname(min) + " - " + cpname(max),
     function() {
       var string, i, j, BATCH_SIZE = 0x1000;
       for (i = min; i < max; i += BATCH_SIZE) {
@@ -39,16 +28,17 @@ function testEncodeDecode(encoding, min, max) {
         }
         var encoded = TextEncoder(encoding).encode(string);
         var decoded = TextDecoder(encoding).decode(encoded);
-        equal(string, decoded, 'Round trip ' + cpname(i) + " - " + cpname(j));
+        assert_equals(string, decoded, 'Round trip ' + cpname(i) + " - " + cpname(j));
       }
-    });
+    },
+    encoding + " - Encode/Decode Range " + cpname(min) + " - " + cpname(max)
+  );
 }
 
 testEncodeDecode('UTF-8', 0, 0x10FFFF);
 testEncodeDecode('UTF-16LE', 0, 0x10FFFF);
 testEncodeDecode('UTF-16BE', 0, 0x10FFFF);
 testEncodeDecode('windows-1252', 0, 0xFF);
-
 
 // Inspired by:
 // http://ecmanaut.blogspot.com/2006/07/encoding-decoding-utf8-in-javascript.html
@@ -67,10 +57,7 @@ function decode_utf8(octets) {
 }
 
 test(
-  "UTF-8 encoding (compare against unescape/encodeURIComponent)",
   function() {
-    expect(544);
-
     var actual, expected, str, i, j, BATCH_SIZE = 0x1000;
 
     for (i = 0; i < 0x10FFFF; i += BATCH_SIZE) {
@@ -91,15 +78,14 @@ test(
       expected = encode_utf8(str);
 
       actual = TextEncoder('UTF-8').encode(str);
-      arrayEqual(actual, expected, 'expected equal encodings');
+      assert_array_equals(actual, expected, 'expected equal encodings');
     }
-  });
+  },
+  "UTF-8 encoding (compare against unescape/encodeURIComponent)"
+);
 
 test(
-  "UTF-8 decoding (compare against decodeURIComponent/escape)",
   function() {
-    expect(272);
-
     var encoded, actual, expected, str, i, j, BATCH_SIZE = 0x1000;
 
     for (i = 0; i < 0x10FFFF; i += BATCH_SIZE) {
@@ -123,22 +109,23 @@ test(
       expected = decode_utf8(encoded);
       actual = TextDecoder('UTF-8').decode(new Uint8Array(encoded));
 
-      equal(actual, expected, 'expected equal decodings');
+      assert_equals(actual, expected, 'expected equal decodings');
     }
-  });
+  },
+  "UTF-8 decoding (compare against decodeURIComponent/escape)"
+);
 
 function testEncodeDecodeSample(encoding, string, expected) {
   test(
-    encoding + " - Encode/Decode - reference sample",
     function() {
-      expect(3);
-
       var encoded = TextEncoder(encoding).encode(string);
-      arrayEqual(encoded, expected, 'expected equal encodings ' + encoding);
+      assert_array_equals(encoded, expected, 'expected equal encodings ' + encoding);
 
       var decoded = TextDecoder(encoding).decode(new Uint8Array(expected));
-      equal(decoded, string, 'expected equal decodings ' + encoding);
-    });
+      assert_equals(decoded, string, 'expected equal decodings ' + encoding);
+    },
+    encoding + " - Encode/Decode - reference sample"
+  );
 }
 
 testEncodeDecodeSample(
@@ -169,10 +156,7 @@ testEncodeDecodeSample(
 );
 
 test(
-  "bad data",
   function() {
-    expect(5);
-
     var badStrings = [
       { input: '\ud800', expected: '\ufffd' }, // Surrogate half
       { input: '\udc00', expected: '\ufffd' }, // Surrogate half
@@ -185,15 +169,14 @@ test(
       function(t) {
         var encoded = TextEncoder('utf-8').encode(t.input);
         var decoded = TextDecoder('utf-8').decode(encoded);
-        equal(t.expected, decoded);
+        assert_equals(t.expected, decoded);
       });
-  });
+  },
+  "bad data"
+);
 
 test(
-  "fatal flag",
   function() {
-    expect(14);
-
     var bad = [
       { encoding: 'utf-8', input: [0xC0] }, // ends early
       { encoding: 'utf-8', input: [0xC0, 0x00] }, // invalid trail
@@ -214,12 +197,14 @@ test(
 
     bad.forEach(
       function(t) {
-        raises(function () { TextDecoder('utf-8').encode(t.input, {fatal: true}); });
+        assert_throws(null, function () { TextDecoder('utf-8').encode(t.input, {fatal: true}); });
       });
-  });
+  },
+  "fatal flag"
+);
 
 test(
-  "Encoding names are case insensitive", function() {
+  function() {
     var encodings = [
       { encoding: 'UTF-8', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
       { encoding: 'UTF-16', string: 'z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD' },
@@ -233,18 +218,17 @@ test(
       function(test) {
         var lower = test.encoding.toLowerCase();
         var upper = test.encoding.toUpperCase();
-        equal(
+        assert_equals(
           TextDecoder(lower).decode(TextEncoder(lower).encode(test.string)),
           TextDecoder(upper).decode(TextEncoder(upper).encode(test.string))
         );
       });
-  });
+  },
+  "Encoding names are case insensitive"
+);
 
 test(
-  "Byte-order marks",
   function() {
-    expect(12);
-
     var utf8_bom = [0xEF, 0xBB, 0xBF];
     var utf8 = [0x7A, 0xC2, 0xA2, 0xE6, 0xB0, 0xB4, 0xF0, 0x9D, 0x84, 0x9E, 0xF4, 0x8F, 0xBF, 0xBD];
 
@@ -257,37 +241,38 @@ test(
     var string = "z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD"; // z, cent, CJK water, G-Clef, Private-use character
 
     // missing BOMs
-    equal(TextDecoder('utf-8').decode(new Uint8Array(utf8)), string);
-    equal(TextDecoder('utf-16le').decode(new Uint8Array(utf16le)), string);
-    equal(TextDecoder('utf-16be').decode(new Uint8Array(utf16be)), string);
+    assert_equals(TextDecoder('utf-8').decode(new Uint8Array(utf8)), string);
+    assert_equals(TextDecoder('utf-16le').decode(new Uint8Array(utf16le)), string);
+    assert_equals(TextDecoder('utf-16be').decode(new Uint8Array(utf16be)), string);
 
     // matching BOMs
-    equal(TextDecoder('utf-8').decode(new Uint8Array(utf8_bom.concat(utf8))), string);
-    equal(TextDecoder('utf-16le').decode(new Uint8Array(utf16le_bom.concat(utf16le))), string);
-    equal(TextDecoder('utf-16be').decode(new Uint8Array(utf16be_bom.concat(utf16be))), string);
+    assert_equals(TextDecoder('utf-8').decode(new Uint8Array(utf8_bom.concat(utf8))), string);
+    assert_equals(TextDecoder('utf-16le').decode(new Uint8Array(utf16le_bom.concat(utf16le))), string);
+    assert_equals(TextDecoder('utf-16be').decode(new Uint8Array(utf16be_bom.concat(utf16be))), string);
 
     // mismatching BOMs
-    notEqual(TextDecoder('utf-8').decode(new Uint8Array(utf16le_bom.concat(utf8))), string);
-    notEqual(TextDecoder('utf-8').decode(new Uint8Array(utf16be_bom.concat(utf8))), string);
-    notEqual(TextDecoder('utf-16le').decode(new Uint8Array(utf8_bom.concat(utf16le))), string);
-    notEqual(TextDecoder('utf-16le').decode(new Uint8Array(utf16be_bom.concat(utf16le))), string);
-    notEqual(TextDecoder('utf-16be').decode(new Uint8Array(utf8_bom.concat(utf16be))), string);
-    notEqual(TextDecoder('utf-16be').decode(new Uint8Array(utf16le_bom.concat(utf16be))), string);
-  });
+    assert_not_equals(TextDecoder('utf-8').decode(new Uint8Array(utf16le_bom.concat(utf8))), string);
+    assert_not_equals(TextDecoder('utf-8').decode(new Uint8Array(utf16be_bom.concat(utf8))), string);
+    assert_not_equals(TextDecoder('utf-16le').decode(new Uint8Array(utf8_bom.concat(utf16le))), string);
+    assert_not_equals(TextDecoder('utf-16le').decode(new Uint8Array(utf16be_bom.concat(utf16le))), string);
+    assert_not_equals(TextDecoder('utf-16be').decode(new Uint8Array(utf8_bom.concat(utf16be))), string);
+    assert_not_equals(TextDecoder('utf-16be').decode(new Uint8Array(utf16le_bom.concat(utf16be))), string);
+  },
+  "Byte-order marks"
+);
 
 test(
-  "Encoding names",
   function () {
-    equal(TextEncoder("utf-8").encoding, "utf-8"); // canonical case
-    equal(TextEncoder("UTF-16").encoding, "utf-16"); // canonical case and name
-    equal(TextEncoder("UTF-16BE").encoding, "utf-16be"); // canonical case and name
-    equal(TextEncoder("iso8859-1").encoding, "windows-1252"); // canonical case and name
-    equal(TextEncoder("iso-8859-1").encoding, "windows-1252"); // canonical case and name
-
-  });
+    assert_equals(TextEncoder("utf-8").encoding, "utf-8"); // canonical case
+    assert_equals(TextEncoder("UTF-16").encoding, "utf-16"); // canonical case and name
+    assert_equals(TextEncoder("UTF-16BE").encoding, "utf-16be"); // canonical case and name
+    assert_equals(TextEncoder("iso8859-1").encoding, "windows-1252"); // canonical case and name
+    assert_equals(TextEncoder("iso-8859-1").encoding, "windows-1252"); // canonical case and name
+  },
+  "Encoding names"
+);
 
 test(
-  "Streaming Decode",
   function () {
     ["utf-8", "utf-16le", "utf-16be"].forEach(function (encoding) {
       var string = "\x00123ABCabc\x80\xFF\u0100\u1000\uFFFD\uD800\uDC00\uDBFF\uDFFF";
@@ -303,22 +288,23 @@ test(
           out += decoder.decode(new Uint8Array(sub), {stream: true});
         }
         out += decoder.decode();
-        equal(out, string, "streaming decode " + encoding);
+        assert_equals(out, string, "streaming decode " + encoding);
       }
     });
-  });
+  },
+  "Streaming Decode"
+);
 
 test(
-  "Shift_JIS Decode",
   function () {
     var jis = [0x82, 0xC9, 0x82, 0xD9, 0x82, 0xF1];
     var expected = "\u306B\u307B\u3093"; // Nihon
-    equal(TextDecoder("shift_jis").decode(new Uint8Array(jis)), expected);
-  });
+    assert_equals(TextDecoder("shift_jis").decode(new Uint8Array(jis)), expected);
+  },
+  "Shift_JIS Decode"
+);
 
 test(
-  "Supersets of ASCII decode ASCII correctly",
-  38,
   function () {
     var encodings = ["utf-8", "ibm864", "ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gbk", "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr", "iso-2022-kr"];
 
@@ -338,25 +324,26 @@ test(
         bytes.push(i);
       }
       var ascii_encoded = TextEncoder('ascii').encode(string);
-      equal(TextDecoder(encoding).decode(ascii_encoded), string, encoding);
-      //arrayEqual(TextEncoder(encoding).encode(string), bytes, encoding);
+      assert_equals(TextDecoder(encoding).decode(ascii_encoded), string, encoding);
+      //assert_array_equals(TextEncoder(encoding).encode(string), bytes, encoding);
     });
-  });
+  },
+  "Supersets of ASCII decode ASCII correctly"
+);
 
 test(
-  "Non-fatal errors at EOF",
   function () {
-    expect(3);
-
-    throws(function() { TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array([0xff])); });
+    assert_throws(null, function() { TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array([0xff])); });
     // This should not hang:
     TextDecoder("utf-8").decode(new Uint8Array([0xff]));
 
-    throws(function() { TextDecoder("utf-16", {fatal: true}).decode(new Uint8Array([0x00])); });
+    assert_throws(null, function() { TextDecoder("utf-16", {fatal: true}).decode(new Uint8Array([0x00])); });
     // This should not hang:
     TextDecoder("utf-16").decode(new Uint8Array([0x00]));
 
-    throws(function() { TextDecoder("utf-16be", {fatal: true}).decode(new Uint8Array([0x00])); });
+    assert_throws(null, function() { TextDecoder("utf-16be", {fatal: true}).decode(new Uint8Array([0x00])); });
     // This should not hang:
     TextDecoder("utf-16be").decode(new Uint8Array([0x00]));
-  });
+  },
+  "Non-fatal errors at EOF"
+);
