@@ -1511,119 +1511,120 @@
         byte_pointer.offset(1);
       }
       switch (iso2022jp_state) {
-      default:
-      case state.ASCII:
-        if (bite === 0x1B) {
-          iso2022jp_state = state.escape_start;
-          return null;
-        }
-        if (inRange(bite, 0x00, 0x7F)) {
-          return bite;
-        }
-        if (bite === EOF_byte) {
-          return EOF_code_point;
-        }
-        return decoderError(fatal);
+        default:
+        case state.ASCII:
+          if (bite === 0x1B) {
+            iso2022jp_state = state.escape_start;
+            return null;
+          }
+          if (inRange(bite, 0x00, 0x7F)) {
+            return bite;
+          }
+          if (bite === EOF_byte) {
+            return EOF_code_point;
+          }
+          return decoderError(fatal);
 
-      case state.escape_start:
-        if (bite === 0x24 || bite === 0x28) {
+        case state.escape_start:
+          if (bite === 0x24 || bite === 0x28) {
+            iso2022jp_lead = bite;
+            iso2022jp_state = state.escape_middle;
+            return null;
+          }
+          if (bite !== EOF_byte) {
+            byte_pointer.offset(-1);
+          }
+          iso2022jp_state = state.ASCII;
+          return decoderError(fatal);
+
+        case state.escape_middle:
+          var lead = iso2022jp_lead;
+          iso2022jp_lead = 0x00;
+          if (lead === 0x24 && (bite === 0x40 || bite === 0x42)) {
+            iso2022jp_jis0212 = false;
+            iso2022jp_state = state.lead;
+            return null;
+          }
+          if (lead === 0x24 && bite === 0x28) {
+            iso2022jp_state = state.escape_final;
+            return null;
+          }
+          if (lead === 0x28 && (bite === 0x42 || bite === 0x4A)) {
+            iso2022jp_state = state.ASCII;
+            return null;
+          }
+          if (lead === 0x28 && bite === 0x49) {
+            iso2022jp_state = state.Katakana;
+            return null;
+          }
+          if (bite === EOF_byte) {
+            byte_pointer.offset(-1);
+          } else {
+            byte_pointer.offset(-2);
+          }
+          iso2022jp_state = state.ASCII;
+          return decoderError(fatal);
+
+        case state.escape_final:
+          if (bite === 0x44) {
+            iso2022jp_jis0212 = true;
+            iso2022jp_state = state.lead;
+            return null;
+          }
+          if (bite === EOF_byte) {
+            byte_pointer.offset(-2);
+          } else {
+            byte_pointer.offset(-3);
+          }
+          iso2022jp_state = state.ASCII;
+          return decoderError(fatal);
+
+        case state.lead:
+          if (bite === 0x0A) {
+            iso2022jp_state = state.ASCII;
+            return decoderError(fatal, 0x000A);
+          }
+          if (bite === 0x1B) {
+            iso2022jp_state = state.escape_start;
+            return null;
+          }
+          if (bite === EOF_byte) {
+            return EOF_code_point;
+          }
           iso2022jp_lead = bite;
-          iso2022jp_state = state.escape_middle;
+          iso2022jp_state = state.trail;
           return null;
-        }
-        if (bite !== EOF_byte) {
-          byte_pointer.offset(-1);
-        }
-        iso2022jp_state = state.ASCII;
-        return decoderError(fatal);
 
-      case state.escape_middle:
-        var lead = iso2022jp_lead;
-        iso2022jp_lead = 0x00;
-        if (lead === 0x24 && (bite === 0x40 || bite === 0x42)) {
-          iso2022jp_jis0212 = false;
+        case state.trail:
           iso2022jp_state = state.lead;
-          return null;
-        }
-        if (lead === 0x24 && bite === 0x28) {
-          iso2022jp_state = state.escape_final;
-          return null;
-        }
-        if (lead === 0x28 && (bite === 0x42 || bite === 0x4A)) {
-          iso2022jp_state = state.ASCII;
-          return null;
-        }
-        if (lead === 0x28 && bite === 0x49) {
-          iso2022jp_state = state.Katakana;
-          return null;
-        }
-        if (bite === EOF_byte) {
-          byte_pointer.offset(-1);
-        } else {
-          byte_pointer.offset(-2);
-        }
-        iso2022jp_state = state.ASCII;
-        return decoderError(fatal);
+          if (bite === EOF_byte) {
+            return decoderError(fatal);
+          }
+          var code_point = null;
+          var pointer = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
+          if (inRange(iso2022jp_lead, 0x21, 0x7E) &&
+              inRange(bite, 0x21, 0x7E)) {
+            code_point = (iso2022jp_jis0212 === false) ?
+                indexCodePointFor(pointer, indexes['jis0208']) :
+                indexCodePointFor(pointer, indexes['jis0212']);
+          }
+          if (code_point === null) {
+            return decoderError(fatal);
+          }
+          return code_point;
 
-      case state.escape_final:
-        if (bite === 0x44) {
-          iso2022jp_jis0212 = true;
-          iso2022jp_state = state.lead;
-          return null;
-        }
-        if (bite === EOF_byte) {
-          byte_pointer.offset(-2);
-        } else {
-          byte_pointer.offset(-3);
-        }
-        iso2022jp_state = state.ASCII;
-        return decoderError(fatal);
-
-      case state.lead:
-        if (bite === 0x0A) {
-          iso2022jp_state = state.ASCII;
-          return decoderError(fatal, 0x000A);
-        }
-        if (bite === 0x1B) {
-          iso2022jp_state = state.escape_start;
-          return null;
-        }
-        if (bite === EOF_byte) {
-          return EOF_code_point;
-        }
-        iso2022jp_lead = bite;
-        iso2022jp_state = state.trail;
-        return null;
-
-      case state.trail:
-        iso2022jp_state = state.lead;
-        if (bite === EOF_byte) {
+        case state.Katakana:
+          if (bite === 0x1B) {
+            iso2022jp_state = state.escape_start;
+            return null;
+          }
+          if (inRange(bite, 0x21, 0x5F)) {
+            return 0xFF61 + bite - 0x21;
+          }
+          if (bite === EOF_byte) {
+            return EOF_code_point;
+          }
           return decoderError(fatal);
-        }
-        var code_point = null;
-        var pointer = (iso2022jp_lead - 0x21) * 94 + bite - 0x21;
-        if (inRange(iso2022jp_lead, 0x21, 0x7E) && inRange(bite, 0x21, 0x7E)) {
-          code_point = (iso2022jp_jis0212 === false) ?
-            indexCodePointFor(pointer, indexes['jis0208']) :
-            indexCodePointFor(pointer, indexes['jis0212']);
-        }
-        if (code_point === null) {
-          return decoderError(fatal);
-        }
-        return code_point;
-
-      case state.Katakana:
-        if (bite === 0x1B) {
-          iso2022jp_state = state.escape_start;
-          return null;
-        }
-        if (inRange(bite, 0x21, 0x5F)) {
-          return 0xFF61 + bite - 0x21;
-        }
-        if (bite === EOF_byte) {
-          return EOF_code_point;
-        }
-        return decoderError(fatal);
       }
     };
   }
@@ -1847,11 +1848,11 @@
 
         if (inRange(lead, 0xC7, 0xFD) && inRange(bite, 0xA1, 0xFE)) {
           pointer = (26 + 26 + 126) * (0xC7 - 0x81) + (lead - 0xC7) * 94 +
-            (bite - 0xA1);
+              (bite - 0xA1);
         }
 
         var code_point = (pointer === null) ? null :
-              indexCodePointFor(pointer, indexes['euc-kr']);
+            indexCodePointFor(pointer, indexes['euc-kr']);
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1949,100 +1950,101 @@
         byte_pointer.offset(1);
       }
       switch (iso2022kr_state) {
-      default:
-      case state.ASCII:
-        if (bite === 0x0E) {
-          iso2022kr_state = state.lead;
-          return null;
-        }
-        if (bite === 0x0F) {
-          return null;
-        }
-        if (bite === 0x1B) {
-          iso2022kr_state = state.escape_start;
-          return null;
-        }
-        if (inRange(bite, 0x00, 0x7F)) {
-          return bite;
-        }
-        if (bite === EOF_byte) {
-          return EOF_code_point;
-        }
-        return decoderError(fatal);
-      case state.escape_start:
-        if (bite === 0x24) {
-          iso2022kr_state = state.escape_middle;
-          return null;
-        }
-        if (bite !== EOF_byte) {
-          byte_pointer.offset(-1);
-        }
-        iso2022kr_state = state.ASCII;
-        return decoderError(fatal);
-      case state.escape_middle:
-        if (bite === 0x29) {
-          iso2022kr_state = state.escape_end;
-          return null;
-        }
-        if (bite === EOF_byte) {
-          byte_pointer.offset(-1);
-        } else {
-          byte_pointer.offset(-2);
-        }
-        iso2022kr_state = state.ASCII;
-        return decoderError(fatal);
-      case state.escape_end:
-        if (bite === 0x43) {
-          iso2022kr_state = state.ASCII;
-          return null;
-        }
-        if (bite === EOF_byte) {
-          byte_pointer.offset(-2);
-        } else {
-          byte_pointer.offset(-3);
-        }
-        iso2022kr_state = state.ASCII;
-        return decoderError(fatal);
-      case state.lead:
-        if (bite === 0x0A) {
-          iso2022kr_state = state.ASCII;
-          return decoderError(fatal, 0x000A);
-        }
-        if (bite === 0x0E) {
-          return null;
-        }
-        if (bite === 0x0F) {
-          iso2022kr_state = state.ASCII;
-          return null;
-        }
-        if (bite === EOF_byte) {
-          return EOF_code_point;
-        }
-        iso2022kr_lead = bite;
-        iso2022kr_state = state.trail;
-        return null;
-      case state.trail:
-        iso2022kr_state = state.lead;
-        if (bite === EOF_byte) {
+        default:
+        case state.ASCII:
+          if (bite === 0x0E) {
+            iso2022kr_state = state.lead;
+            return null;
+          }
+          if (bite === 0x0F) {
+            return null;
+          }
+          if (bite === 0x1B) {
+            iso2022kr_state = state.escape_start;
+            return null;
+          }
+          if (inRange(bite, 0x00, 0x7F)) {
+            return bite;
+          }
+          if (bite === EOF_byte) {
+            return EOF_code_point;
+          }
           return decoderError(fatal);
-        }
-        var code_point = null;
-        if (inRange(iso2022kr_lead, 0x21, 0x46) && inRange(bite, 0x21, 0x7E)) {
-          code_point = indexCodePointFor((26 + 26 + 126) *
-                                         (iso2022kr_lead - 1) +
-                                         26 + 26 + bite - 1,
-                                         indexes['euc-kr']);
-        } else if (inRange(iso2022kr_lead, 0x47, 0x7E) &&
-                   inRange(bite, 0x21, 0x7E)) {
-          code_point = indexCodePointFor((26 + 26 + 126) * (0xC7 - 0x81) +
-                                         (iso2022kr_lead - 0x47) * 94 +
-                                         (bite - 0x21),
-                                         indexes['euc-kr']);
-        }
-        if (code_point !== null) {
-          return code_point;
-        }
-        return decoderError(fatal);
+        case state.escape_start:
+          if (bite === 0x24) {
+            iso2022kr_state = state.escape_middle;
+            return null;
+          }
+          if (bite !== EOF_byte) {
+            byte_pointer.offset(-1);
+          }
+          iso2022kr_state = state.ASCII;
+          return decoderError(fatal);
+        case state.escape_middle:
+          if (bite === 0x29) {
+            iso2022kr_state = state.escape_end;
+            return null;
+          }
+          if (bite === EOF_byte) {
+            byte_pointer.offset(-1);
+          } else {
+            byte_pointer.offset(-2);
+          }
+          iso2022kr_state = state.ASCII;
+          return decoderError(fatal);
+        case state.escape_end:
+          if (bite === 0x43) {
+            iso2022kr_state = state.ASCII;
+            return null;
+          }
+          if (bite === EOF_byte) {
+            byte_pointer.offset(-2);
+          } else {
+            byte_pointer.offset(-3);
+          }
+          iso2022kr_state = state.ASCII;
+          return decoderError(fatal);
+        case state.lead:
+          if (bite === 0x0A) {
+            iso2022kr_state = state.ASCII;
+            return decoderError(fatal, 0x000A);
+          }
+          if (bite === 0x0E) {
+            return null;
+          }
+          if (bite === 0x0F) {
+            iso2022kr_state = state.ASCII;
+            return null;
+          }
+          if (bite === EOF_byte) {
+            return EOF_code_point;
+          }
+          iso2022kr_lead = bite;
+          iso2022kr_state = state.trail;
+          return null;
+        case state.trail:
+          iso2022kr_state = state.lead;
+          if (bite === EOF_byte) {
+            return decoderError(fatal);
+          }
+          var code_point = null;
+          if (inRange(iso2022kr_lead, 0x21, 0x46) &&
+              inRange(bite, 0x21, 0x7E)) {
+            code_point = indexCodePointFor((26 + 26 + 126) *
+                (iso2022kr_lead - 1) +
+                26 + 26 + bite - 1,
+                indexes['euc-kr']);
+          } else if (inRange(iso2022kr_lead, 0x47, 0x7E) &&
+              inRange(bite, 0x21, 0x7E)) {
+            code_point = indexCodePointFor((26 + 26 + 126) * (0xC7 - 0x81) +
+                (iso2022kr_lead - 0x47) * 94 +
+                (bite - 0x21),
+                indexes['euc-kr']);
+          }
+          if (code_point !== null) {
+            return code_point;
+          }
+          return decoderError(fatal);
       }
     };
   }
@@ -2167,7 +2169,7 @@
         utf16_lead_surrogate = null;
         if (inRange(code_point, 0xDC00, 0xDFFF)) {
           return 0x10000 + (lead_surrogate - 0xD800) * 0x400 +
-            (code_point - 0xDC00);
+              (code_point - 0xDC00);
         }
         byte_pointer.offset(-2);
         return decoderError(fatal);
@@ -2311,8 +2313,8 @@
 
     if (Object.defineProperty) {
       Object.defineProperty(
-        this, 'encoding',
-        { get: function() { return this._encoding.name; } });
+          this, 'encoding',
+          { get: function() { return this._encoding.name; } });
     } else {
       this.encoding = this._encoding.name;
     }
@@ -2378,8 +2380,8 @@
 
     if (Object.defineProperty) {
       Object.defineProperty(
-        this, 'encoding',
-        { get: function() { return this._encoding.name; } });
+          this, 'encoding',
+          { get: function() { return this._encoding.name; } });
     } else {
       this.encoding = this._encoding.name;
     }
