@@ -2143,8 +2143,8 @@
    * @param {{fatal: boolean}=} options
    */
   function TextEncoder(opt_encoding, options) {
-    if (!this || this === global) {
-      return new TextEncoder(opt_encoding, options);
+    if (!(this instanceof TextEncoder)) {
+      throw new TypeError('Constructor cannot be called as a function');
     }
     opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
@@ -2211,8 +2211,8 @@
    * @param {{fatal: boolean}=} options
    */
   function TextDecoder(opt_encoding, options) {
-    if (!this || this === global) {
-      return new TextDecoder(opt_encoding, options);
+    if (!(this instanceof TextDecoder)) {
+      throw new TypeError('Constructor cannot be called as a function');
     }
     opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);

@@ -5,13 +5,13 @@
 function encodeArrayOfStrings(strings, encoding) {
   var encoder, encoded, len, i, bytes, view, offset;
 
-  encoder = TextEncoder(encoding);
+  encoder = new TextEncoder(encoding);
   encoded = [];
 
   len = Uint32Array.BYTES_PER_ELEMENT;
   for (i = 0; i < strings.length; i += 1) {
     len += Uint32Array.BYTES_PER_ELEMENT;
-    encoded[i] = TextEncoder(encoding).encode(strings[i]);
+    encoded[i] = new TextEncoder(encoding).encode(strings[i]);
     len += encoded[i].byteLength;
   }
 
@@ -34,7 +34,7 @@ function encodeArrayOfStrings(strings, encoding) {
 function decodeArrayOfStrings(buffer, encoding) {
   var decoder, view, offset, num_strings, strings, i, len;
 
-  decoder = TextDecoder(encoding);
+  decoder = new TextDecoder(encoding);
   view = new DataView(buffer);
   offset = 0;
   strings = [];
