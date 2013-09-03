@@ -2261,25 +2261,6 @@
     return label;
   }
 
-  /**
-   * @param {string} label The encoding label.
-   * @param {ByteInputStream} input_stream The byte stream to test.
-   */
-  function consumeBOM(label, input_stream) {
-    if (input_stream.match([0xFF, 0xFE]) && label === 'utf-16') {
-      input_stream.offset(2);
-      return;
-    }
-    if (input_stream.match([0xFE, 0xFF]) && label == 'utf-16be') {
-      input_stream.offset(2);
-      return;
-    }
-    if (input_stream.match([0xEF, 0xBB, 0xBF]) && label == 'utf-8') {
-      input_stream.offset(3);
-      return;
-    }
-  }
-
   //
   // Implementation of Text Encoding Web API
   //
@@ -2408,6 +2389,7 @@
 
       if (!this._streaming) {
         this._decoder = this._encoding.getDecoder(this._options);
+        this._BOMseen = false;
       }
       this._streaming = Boolean(options.stream);
 
@@ -2415,12 +2397,6 @@
                                  opt_view.byteOffset,
                                  opt_view.byteLength);
       var input_stream = new ByteInputStream(bytes);
-
-      if (!this._BOMseen) {
-        // TODO: Don't do this until sufficient bytes are present
-        this._BOMseen = true;
-        consumeBOM(this._encoding.name, input_stream);
-      }
 
       var output_stream = new CodePointOutputStream(), code_point;
       while (input_stream.get() !== EOF_byte) {
@@ -2439,7 +2415,17 @@
                  input_stream.get() != EOF_byte);
         this._decoder = null;
       }
-      return output_stream.string();
+
+      var result = output_stream.string();
+      if (!this._BOMseen && result.length) {
+        this._BOMseen = true;
+        if (['utf-8', 'utf-16', 'utf-16be'].indexOf(this.encoding) !== -1 &&
+           result.charCodeAt(0) === 0xFEFF) {
+          result = result.substring(1);
+        }
+      }
+
+      return result;
     }
   };
 

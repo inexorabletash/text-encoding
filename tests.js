@@ -241,6 +241,19 @@ test(
     assert_equals(TextDecoder('utf-16le').decode(new Uint8Array(utf16le_bom.concat(utf16le))), string);
     assert_equals(TextDecoder('utf-16be').decode(new Uint8Array(utf16be_bom.concat(utf16be))), string);
 
+    // matching BOMs split
+    var decoder8 = new TextDecoder('utf-8');
+    assert_equals(decoder8.decode(new Uint8Array(utf8_bom.slice(0, 1)), {stream: true}), '');
+    assert_equals(decoder8.decode(new Uint8Array(utf8_bom.slice(1).concat(utf8))), string);
+    assert_equals(decoder8.decode(new Uint8Array(utf8_bom.slice(0, 2)), {stream: true}), '');
+    assert_equals(decoder8.decode(new Uint8Array(utf8_bom.slice(2).concat(utf8))), string);
+    var decoder16le = new TextDecoder('utf-16le');
+    assert_equals(decoder16le.decode(new Uint8Array(utf16le_bom.slice(0, 1)), {stream: true}), '');
+    assert_equals(decoder16le.decode(new Uint8Array(utf16le_bom.slice(1).concat(utf16le))), string);
+    var decoder16be = new TextDecoder('utf-16be');
+    assert_equals(decoder16be.decode(new Uint8Array(utf16be_bom.slice(0, 1)), {stream: true}), '');
+    assert_equals(decoder16be.decode(new Uint8Array(utf16be_bom.slice(1).concat(utf16be))), string);
+
     // mismatching BOMs
     assert_not_equals(TextDecoder('utf-8').decode(new Uint8Array(utf16le_bom.concat(utf8))), string);
     assert_not_equals(TextDecoder('utf-8').decode(new Uint8Array(utf16be_bom.concat(utf8))), string);
