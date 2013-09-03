@@ -180,11 +180,11 @@ test(
       { encoding: 'utf-8', input: [0xE0, 0x80, 0x00] }, // invalid trail
       { encoding: 'utf-8', input: [0xE0, 0x80, 0xC0] }, // invalid trail
       { encoding: 'utf-8', input: [0xFC, 0x80, 0x80, 0x80, 0x80, 0x80] }, // > 0x10FFFF
-      { encoding: 'utf-16', input: [0x00] }, // truncated code unit
-      { encoding: 'utf-16', input: [0x00, 0xd8] }, // surrogate half
-      { encoding: 'utf-16', input: [0x00, 0xd8, 0x00, 0x00] }, // surrogate half
-      { encoding: 'utf-16', input: [0x00, 0xdc, 0x00, 0x00] }, // trail surrogate
-      { encoding: 'utf-16', input: [0x00, 0xdc, 0x00, 0xd8] }  // swapped surrogates
+      { encoding: 'utf-16le', input: [0x00] }, // truncated code unit
+      { encoding: 'utf-16le', input: [0x00, 0xd8] }, // surrogate half
+      { encoding: 'utf-16le', input: [0x00, 0xd8, 0x00, 0x00] }, // surrogate half
+      { encoding: 'utf-16le', input: [0x00, 0xdc, 0x00, 0x00] }, // trail surrogate
+      { encoding: 'utf-16le', input: [0x00, 0xdc, 0x00, 0xd8] }  // swapped surrogates
       // TODO: Single byte encoding cases
     ];
 
@@ -202,8 +202,8 @@ test(
   function() {
     var encodings = [
       { label: 'utf-8', encoding: 'utf-8' },
-      { label: 'utf-16', encoding: 'utf-16' },
-      { label: 'utf-16le', encoding: 'utf-16' },
+      { label: 'utf-16', encoding: 'utf-16le' },
+      { label: 'utf-16le', encoding: 'utf-16le' },
       { label: 'utf-16be', encoding: 'utf-16be' },
       { label: 'ascii', encoding: 'windows-1252' },
       { label: 'iso-8859-1', encoding: 'windows-1252' }
@@ -268,7 +268,7 @@ test(
 test(
   function () {
     assert_equals(TextDecoder("utf-8").encoding, "utf-8"); // canonical case
-    assert_equals(TextDecoder("UTF-16").encoding, "utf-16"); // canonical case and name
+    assert_equals(TextDecoder("UTF-16").encoding, "utf-16le"); // canonical case and name
     assert_equals(TextDecoder("UTF-16BE").encoding, "utf-16be"); // canonical case and name
     assert_equals(TextDecoder("iso8859-1").encoding, "windows-1252"); // canonical case and name
     assert_equals(TextDecoder("iso-8859-1").encoding, "windows-1252"); // canonical case and name
@@ -310,7 +310,7 @@ test(
 
 test(
   function () {
-    var encodings = ["utf-8", "ibm864", "ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gbk", "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr", "iso-2022-kr"];
+    var encodings = ["utf-8", "ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gbk", "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr"];
 
     encodings.forEach(function (encoding) {
       var string = '', bytes = [];
@@ -341,9 +341,9 @@ test(
     // This should not hang:
     TextDecoder("utf-8").decode(new Uint8Array([0xff]));
 
-    assert_throws({name: 'EncodingError'}, function() { TextDecoder("utf-16", {fatal: true}).decode(new Uint8Array([0x00])); });
+    assert_throws({name: 'EncodingError'}, function() { TextDecoder("utf-16le", {fatal: true}).decode(new Uint8Array([0x00])); });
     // This should not hang:
-    TextDecoder("utf-16").decode(new Uint8Array([0x00]));
+    TextDecoder("utf-16le").decode(new Uint8Array([0x00]));
 
     assert_throws({name: 'EncodingError'}, function() { TextDecoder("utf-16be", {fatal: true}).decode(new Uint8Array([0x00])); });
     // This should not hang:
@@ -355,9 +355,9 @@ test(
 test(
   function () {
 
-    var utf_encodings = ["utf-8", "utf-16", "utf-16be"];
+    var utf_encodings = ["utf-8", "utf-16le", "utf-16be"];
 
-    var legacy_encodings = ["ibm864", "ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gbk", "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr", "iso-2022-kr"];
+    var legacy_encodings = ["ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gbk", "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr"];
 
     utf_encodings.forEach(function(encoding) {
       assert_equals(TextDecoder(encoding).encoding, encoding);
