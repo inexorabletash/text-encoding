@@ -740,8 +740,15 @@
     return pointer === -1 ? null : pointer;
   }
 
-  /** @type {Object.<string, (Array.<number>|Array.<Array.<number>>)>} */
-  var indexes = global['encoding-indexes'] || {};
+  /**
+   * @param {string} name Name of the index.
+   * @return {(Array.<number>|Array.<Array.<number>>)}
+   *  */
+  function index(name) {
+    if (!('encoding-indexes' in global))
+      throw new Error("Indexes missing. Did you forget to include encoding-indexes.js?");
+    return global['encoding-indexes'][name];
+  }
 
   /**
    * @param {number} pointer The |pointer| to search for in the gb18030 index.
@@ -754,10 +761,10 @@
     }
     var /** @type {number} */ offset = 0,
         /** @type {number} */ code_point_offset = 0,
-        /** @type {Array.<Array.<number>>} */ index = indexes['gb18030'];
+        /** @type {Array.<Array.<number>>} */ idx = index('gb18030');
     var i;
-    for (i = 0; i < index.length; ++i) {
-      var entry = index[i];
+    for (i = 0; i < idx.length; ++i) {
+      var entry = idx[i];
       if (entry[0] <= pointer) {
         offset = entry[0];
         code_point_offset = entry[1];
@@ -776,10 +783,10 @@
   function indexGB18030PointerFor(code_point) {
     var /** @type {number} */ offset = 0,
         /** @type {number} */ pointer_offset = 0,
-        /** @type {Array.<Array.<number>>} */ index = indexes['gb18030'];
+        /** @type {Array.<Array.<number>>} */ idx = index('gb18030');
     var i;
-    for (i = 0; i < index.length; ++i) {
-      var entry = index[i];
+    for (i = 0; i < idx.length; ++i) {
+      var entry = idx[i];
       if (entry[1] <= code_point) {
         offset = entry[1];
         pointer_offset = entry[0];
@@ -991,12 +998,12 @@
       if (category.heading !== 'Legacy single-byte encodings')
         return;
       category.encodings.forEach(function(encoding) {
-        var index = indexes[encoding.name];
+        var idx = index(encoding.name);
         encoding.getDecoder = function(options) {
-          return new SingleByteDecoder(index, options);
+          return new SingleByteDecoder(idx, options);
         };
         encoding.getEncoder = function(options) {
-          return new SingleByteEncoder(index, options);
+          return new SingleByteEncoder(idx, options);
         };
       });
     });
@@ -1077,7 +1084,7 @@
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
         code_point = pointer === null ? null :
-            indexCodePointFor(pointer, indexes['gbk']);
+            indexCodePointFor(pointer, index('gbk'));
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1121,7 +1128,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, indexes['gbk']);
+      var pointer = indexPointerFor(code_point, index('gbk'));
       if (pointer !== null) {
         var lead = div(pointer, 190) + 0x81;
         var trail = pointer % 190;
@@ -1210,7 +1217,7 @@
         var code_point = null;
         if (inRange(bite, 0x21, 0x7E)) {
           code_point = indexCodePointFor((lead - 1) * 190 +
-                                         (bite + 0x3F), indexes['gbk']);
+                                         (bite + 0x3F), index('gbk'));
         }
         if (bite === 0x0A) {
           hzgb2312 = false;
@@ -1275,7 +1282,7 @@
         hzgb2312 = true;
         return output_byte_stream.emit(0x7E, 0x7B);
       }
-      var pointer = indexPointerFor(code_point, indexes['gbk']);
+      var pointer = indexPointerFor(code_point, index('gbk'));
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1356,7 +1363,7 @@
           return 0x00EA;
         }
         var code_point = (pointer === null) ? null :
-            indexCodePointFor(pointer, indexes['big5']);
+            indexCodePointFor(pointer, index('big5'));
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1396,7 +1403,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, indexes['big5']);
+      var pointer = indexPointerFor(code_point, index('big5'));
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1456,7 +1463,7 @@
         code_point = null;
         if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
           code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1,
-                                         indexes['jis0212']);
+                                         index('jis0212'));
         }
         if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
@@ -1481,7 +1488,7 @@
         code_point = null;
         if (inRange(lead, 0xA1, 0xFE) && inRange(bite, 0xA1, 0xFE)) {
           code_point = indexCodePointFor((lead - 0xA1) * 94 + bite - 0xA1,
-                                         indexes['jis0208']);
+                                         index('jis0208'));
         }
         if (!inRange(bite, 0xA1, 0xFE)) {
           byte_pointer.offset(-1);
@@ -1532,7 +1539,7 @@
         return output_byte_stream.emit(0x8E, code_point - 0xFF61 + 0xA1);
       }
 
-      var pointer = indexPointerFor(code_point, indexes['jis0208']);
+      var pointer = indexPointerFor(code_point, index('jis0208'));
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1675,8 +1682,8 @@
           if (inRange(iso2022jp_lead, 0x21, 0x7E) &&
               inRange(bite, 0x21, 0x7E)) {
             code_point = (iso2022jp_jis0212 === false) ?
-                indexCodePointFor(pointer, indexes['jis0208']) :
-                indexCodePointFor(pointer, indexes['jis0212']);
+                indexCodePointFor(pointer, index('jis0208')) :
+                indexCodePointFor(pointer, index('jis0212'));
           }
           if (code_point === null) {
             return decoderError(fatal);
@@ -1753,7 +1760,7 @@
         iso2022jp_state = state.lead;
         return output_byte_stream.emit(0x1B, 0x24, 0x42);
       }
-      var pointer = indexPointerFor(code_point, indexes['jis0208']);
+      var pointer = indexPointerFor(code_point, index('jis0208'));
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1801,7 +1808,7 @@
           var offset = (bite < 0x7F) ? 0x40 : 0x41;
           var lead_offset = (lead < 0xA0) ? 0x81 : 0xC1;
           var code_point = indexCodePointFor((lead - lead_offset) * 188 +
-                                             bite - offset, indexes['jis0208']);
+                                             bite - offset, index('jis0208'));
           if (code_point === null) {
             return decoderError(fatal);
           }
@@ -1853,7 +1860,7 @@
       if (inRange(code_point, 0xFF61, 0xFF9F)) {
         return output_byte_stream.emit(code_point - 0xFF61 + 0xA1);
       }
-      var pointer = indexPointerFor(code_point, indexes['jis0208']);
+      var pointer = indexPointerFor(code_point, index('jis0208'));
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1922,7 +1929,7 @@
         }
 
         var code_point = (pointer === null) ? null :
-            indexCodePointFor(pointer, indexes['euc-kr']);
+            indexCodePointFor(pointer, index('euc-kr'));
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1965,7 +1972,7 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, indexes['euc-kr']);
+      var pointer = indexPointerFor(code_point, index('euc-kr'));
       if (pointer === null) {
         return encoderError(code_point);
       }
