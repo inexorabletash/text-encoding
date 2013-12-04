@@ -49,7 +49,10 @@
     /** @type {number} */
     var pos = 0;
 
-    /** @return {number} Get the next byte from the stream. */
+    /**
+     * @this {ByteInputStream}
+     * @return {number} Get the next byte from the stream.
+     */
     this.get = function() {
       return (pos >= bytes.length) ? EOF_byte : Number(bytes[pos]);
     };
@@ -225,6 +228,7 @@
 
   /**
    * @param {number} code_point The code point that could not be encoded.
+   * @return {number} Always throws, no value is actually returned.
    */
   function encoderError(code_point) {
     throw new EncodingError('The code point ' + code_point +
@@ -721,12 +725,13 @@
 
   /**
    * @param {number} pointer The |pointer| to search for.
-   * @param {Array.<?number>} index The |index| to search within.
+   * @param {Array.<?number>|undefined} index The |index| to search within.
    * @return {?number} The code point corresponding to |pointer| in |index|,
    *     or null if |code point| is not in |index|.
    */
   function indexCodePointFor(pointer, index) {
-    return (index || [])[pointer] || null;
+    if (!index) return null;
+    return index[pointer] || null;
   }
 
   /**
@@ -805,7 +810,7 @@
 
   /**
    * @constructor
-   * @param {{fatal: boolean}} options
+    * @param {{fatal: boolean}} options
    */
   function UTF8Decoder(options) {
     var fatal = options.fatal;
@@ -891,6 +896,7 @@
      * @return {number} The last byte emitted.
      */
     this.encode = function(output_byte_stream, code_point_pointer) {
+      /** @type {number} */
       var code_point = code_point_pointer.get();
       if (code_point === EOF_code_point) {
         return EOF_byte;
@@ -924,9 +930,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-8'].getEncoder = function(options) {
     return new UTF8Encoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-8'].getDecoder = function(options) {
     return new UTF8Decoder(options);
   };
@@ -999,9 +1007,11 @@
         return;
       category.encodings.forEach(function(encoding) {
         var idx = index(encoding.name);
+        /** @param {{fatal: boolean}} options */
         encoding.getDecoder = function(options) {
           return new SingleByteDecoder(idx, options);
         };
+        /** @param {{fatal: boolean}} options */
         encoding.getEncoder = function(options) {
           return new SingleByteEncoder(idx, options);
         };
@@ -1152,17 +1162,21 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['gbk'].getEncoder = function(options) {
     return new GBKEncoder(false, options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['gbk'].getDecoder = function(options) {
     return new GBKDecoder(false, options);
   };
 
   // 9.2 gb18030
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['gb18030'].getEncoder = function(options) {
     return new GBKEncoder(true, options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['gb18030'].getDecoder = function(options) {
     return new GBKDecoder(true, options);
   };
@@ -1254,6 +1268,7 @@
    */
   function HZGB2312Encoder(options) {
     var fatal = options.fatal;
+    /** @type {boolean} */
     var hzgb2312 = false;
     /**
      * @param {ByteOutputStream} output_byte_stream Output byte stream.
@@ -1295,9 +1310,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['hz-gb-2312'].getEncoder = function(options) {
     return new HZGB2312Encoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['hz-gb-2312'].getDecoder = function(options) {
     return new HZGB2312Decoder(options);
   };
@@ -1417,9 +1434,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['big5'].getEncoder = function(options) {
     return new Big5Encoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['big5'].getDecoder = function(options) {
     return new Big5Decoder(options);
   };
@@ -1549,9 +1568,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['euc-jp'].getEncoder = function(options) {
     return new EUCJPEncoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['euc-jp'].getDecoder = function(options) {
     return new EUCJPDecoder(options);
   };
@@ -1770,9 +1791,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['iso-2022-jp'].getEncoder = function(options) {
     return new ISO2022JPEncoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['iso-2022-jp'].getDecoder = function(options) {
     return new ISO2022JPDecoder(options);
   };
@@ -1872,9 +1895,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['shift_jis'].getEncoder = function(options) {
     return new ShiftJISEncoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['shift_jis'].getDecoder = function(options) {
     return new ShiftJISDecoder(options);
   };
@@ -1990,9 +2015,11 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['euc-kr'].getEncoder = function(options) {
     return new EUCKREncoder(options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['euc-kr'].getDecoder = function(options) {
     return new EUCKRDecoder(options);
   };
@@ -2074,6 +2101,10 @@
      * @return {number} The last byte emitted.
      */
     this.encode = function(output_byte_stream, code_point_pointer) {
+      /**
+       * @param {number} code_unit
+       * @return {number} last byte emitted
+       */
       function convert_to_bytes(code_unit) {
         var byte1 = code_unit >> 8;
         var byte2 = code_unit & 0x00FF;
@@ -2100,17 +2131,21 @@
     };
   }
 
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-16le'].getEncoder = function(options) {
     return new UTF16Encoder(false, options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-16le'].getDecoder = function(options) {
     return new UTF16Decoder(false, options);
   };
 
   // 13.2 utf-16be
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-16be'].getEncoder = function(options) {
     return new UTF16Encoder(true, options);
   };
+  /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-16be'].getDecoder = function(options) {
     return new UTF16Decoder(true, options);
   };
@@ -2200,6 +2235,7 @@
         this._encoder.encode(output_stream, input_stream);
       }
       if (!this._streaming) {
+        /** @type {number} */
         var last_byte;
         do {
           last_byte = this._encoder.encode(output_stream, input_stream);
@@ -2230,6 +2266,8 @@
 
     /** @private @type {boolean} */
     this._streaming = false;
+    /** @private @type {boolean} */
+    this._BOMseen = false;
     /** @private */
     this._decoder = null;
     /** @private @type {{fatal: boolean}=} */
@@ -2274,7 +2312,11 @@
                                  opt_view.byteLength);
       var input_stream = new ByteInputStream(bytes);
 
-      var output_stream = new CodePointOutputStream(), code_point;
+      var output_stream = new CodePointOutputStream();
+
+      /** @type {number} */
+      var code_point;
+
       while (input_stream.get() !== EOF_byte) {
         code_point = this._decoder.decode(input_stream);
         if (code_point !== null && code_point !== EOF_code_point) {
@@ -2305,6 +2347,6 @@
     }
   };
 
-  global['TextEncoder'] = global['TextEncoder'] || TextEncoder;
-  global['TextDecoder'] = global['TextDecoder'] || TextDecoder;
+  if (!('TextEncoder' in global)) global['TextEncoder'] = TextEncoder;
+  if (!('TextDecoder' in global)) global['TextDecoder'] = TextDecoder;
 }(this));
