@@ -227,8 +227,8 @@ test(
 
 test(
   function () {
-    assert_throws({name: 'TypeError'}, function() { TextEncoder('utf-8'); });
-    assert_throws({name: 'TypeError'}, function() { TextDecoder('utf-8'); });
+    assert_true(TextEncoder('utf-8') instanceof TextEncoder);
+    assert_true(TextDecoder('utf-8') instanceof TextDecoder);
   },
   "Must call constructors with 'new'"
 );

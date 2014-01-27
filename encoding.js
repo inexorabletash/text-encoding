@@ -2186,7 +2186,7 @@
    */
   function TextEncoder(opt_encoding, options) {
     if (!(this instanceof TextEncoder)) {
-      throw new TypeError('Constructor cannot be called as a function');
+      return new TextEncoder(opt_encoding, options);
     }
     opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
@@ -2255,7 +2255,7 @@
    */
   function TextDecoder(opt_encoding, options) {
     if (!(this instanceof TextDecoder)) {
-      throw new TypeError('Constructor cannot be called as a function');
+      return new TextDecoder(opt_encoding, options);
     }
     opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
     options = Object(options);
