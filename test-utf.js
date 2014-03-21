@@ -12,7 +12,7 @@ function assert_string_equals(actual, expected, description) {
 
   // length check
   assert_equals(actual.length, expected.length,
-                description + ": string lengths")
+                description + ": string lengths");
 
   var i, a, b;
   for (i = 0; i < actual.length; i++) {

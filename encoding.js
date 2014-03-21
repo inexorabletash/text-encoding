@@ -582,18 +582,13 @@
             "chinese",
             "csgb2312",
             "csiso58gb231280",
+            "gb18030",
             "gb2312",
             "gb_2312",
             "gb_2312-80",
             "gbk",
             "iso-ir-58",
             "x-gbk"
-          ],
-          "name": "gbk"
-        },
-        {
-          "labels": [
-            "gb18030"
           ],
           "name": "gb18030"
         },
@@ -678,9 +673,9 @@
         {
           "labels": [
             "csiso2022kr",
-            "iso-2022-kr",
             "iso-2022-cn",
-            "iso-2022-cn-ext"
+            "iso-2022-cn-ext",
+            "iso-2022-kr"
           ],
           "name": "replacement"
         },
@@ -802,11 +797,191 @@
     return pointer_offset + code_point - offset;
   }
 
+
   //
-  // 7. The encoding
+  // 7. API
   //
 
-  // 7.1 utf-8
+  /** @const */ var DEFAULT_ENCODING = 'utf-8';
+
+  // 7.1 Interface TextDecoder
+
+  /**
+   * @constructor
+   * @param {string=} opt_encoding The label of the encoding;
+   *     defaults to 'utf-8'.
+   * @param {{fatal: boolean}=} options
+   */
+  function TextDecoder(opt_encoding, options) {
+    if (!(this instanceof TextDecoder)) {
+      return new TextDecoder(opt_encoding, options);
+    }
+    opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
+    options = Object(options);
+    /** @private */
+    this._encoding = getEncoding(opt_encoding);
+    if (this._encoding === null || this._encoding.name === 'replacement')
+      throw new TypeError('Unknown encoding: ' + opt_encoding);
+
+    /** @private @type {boolean} */
+    this._streaming = false;
+    /** @private @type {boolean} */
+    this._BOMseen = false;
+    /** @private */
+    this._decoder = null;
+    /** @private @type {{fatal: boolean}=} */
+    this._options = { fatal: Boolean(options.fatal) };
+
+    if (Object.defineProperty) {
+      Object.defineProperty(
+          this, 'encoding',
+          { get: function() { return this._encoding.name; } });
+    } else {
+      this.encoding = this._encoding.name;
+    }
+
+    return this;
+  }
+
+  // TODO: Issue if input byte stream is offset by decoder
+  // TODO: BOM detection will not work if stream header spans multiple calls
+  // (last N bytes of previous stream may need to be retained?)
+  TextDecoder.prototype = {
+    /**
+     * @param {ArrayBufferView=} opt_view The buffer of bytes to decode.
+     * @param {{stream: boolean}=} options
+     */
+    decode: function decode(opt_view, options) {
+      if (opt_view && !('buffer' in opt_view && 'byteOffset' in opt_view &&
+                        'byteLength' in opt_view)) {
+        throw new TypeError('Expected ArrayBufferView');
+      } else if (!opt_view) {
+        opt_view = new Uint8Array(0);
+      }
+      options = Object(options);
+
+      if (!this._streaming) {
+        this._decoder = this._encoding.getDecoder(this._options);
+        this._BOMseen = false;
+      }
+      this._streaming = Boolean(options.stream);
+
+      var bytes = new Uint8Array(opt_view.buffer,
+                                 opt_view.byteOffset,
+                                 opt_view.byteLength);
+      var input_stream = new ByteInputStream(bytes);
+
+      var output_stream = new CodePointOutputStream();
+
+      /** @type {number} */
+      var code_point;
+
+      while (input_stream.get() !== EOF_byte) {
+        code_point = this._decoder.decode(input_stream);
+        if (code_point !== null && code_point !== EOF_code_point) {
+          output_stream.emit(code_point);
+        }
+      }
+      if (!this._streaming) {
+        do {
+          code_point = this._decoder.decode(input_stream);
+          if (code_point !== null && code_point !== EOF_code_point) {
+            output_stream.emit(code_point);
+          }
+        } while (code_point !== EOF_code_point &&
+                 input_stream.get() != EOF_byte);
+        this._decoder = null;
+      }
+
+      var result = output_stream.string();
+      if (!this._BOMseen && result.length) {
+        this._BOMseen = true;
+        if (['utf-8', 'utf-16le', 'utf-16be'].indexOf(this.encoding) !== -1 &&
+           result.charCodeAt(0) === 0xFEFF) {
+          result = result.substring(1);
+        }
+      }
+
+      return result;
+    }
+  };
+
+  // 7.2 Interface TextEncoder
+
+  /**
+   * @constructor
+   * @param {string=} opt_encoding The label of the encoding;
+   *     defaults to 'utf-8'.
+   * @param {{fatal: boolean}=} options
+   */
+  function TextEncoder(opt_encoding, options) {
+    if (!(this instanceof TextEncoder)) {
+      return new TextEncoder(opt_encoding, options);
+    }
+    opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
+    options = Object(options);
+    /** @private */
+    this._encoding = getEncoding(opt_encoding);
+    if (this._encoding === null || (this._encoding.name !== 'utf-8' &&
+                                    this._encoding.name !== 'utf-16le' &&
+                                    this._encoding.name !== 'utf-16be'))
+      throw new TypeError('Unknown encoding: ' + opt_encoding);
+    /** @private @type {boolean} */
+    this._streaming = false;
+    /** @private */
+    this._encoder = null;
+    /** @private @type {{fatal: boolean}=} */
+    this._options = { fatal: Boolean(options.fatal) };
+
+    if (Object.defineProperty) {
+      Object.defineProperty(
+          this, 'encoding',
+          { get: function() { return this._encoding.name; } });
+    } else {
+      this.encoding = this._encoding.name;
+    }
+
+    return this;
+  }
+
+  TextEncoder.prototype = {
+    /**
+     * @param {string=} opt_string The string to encode.
+     * @param {{stream: boolean}=} options
+     */
+    encode: function encode(opt_string, options) {
+      opt_string = opt_string ? String(opt_string) : '';
+      options = Object(options);
+      // TODO: any options?
+      if (!this._streaming) {
+        this._encoder = this._encoding.getEncoder(this._options);
+      }
+      this._streaming = Boolean(options.stream);
+
+      var bytes = [];
+      var output_stream = new ByteOutputStream(bytes);
+      var input_stream = new CodePointInputStream(opt_string);
+      while (input_stream.get() !== EOF_code_point) {
+        this._encoder.encode(output_stream, input_stream);
+      }
+      if (!this._streaming) {
+        /** @type {number} */
+        var last_byte;
+        do {
+          last_byte = this._encoder.encode(output_stream, input_stream);
+        } while (last_byte !== EOF_byte);
+        this._encoder = null;
+      }
+      return new Uint8Array(bytes);
+    }
+  };
+
+
+  //
+  // 8. The encoding
+  //
+
+  // 8.1 utf-8
 
   /**
    * @constructor
@@ -940,7 +1115,7 @@
   };
 
   //
-  // 8. Legacy single-byte encodings
+  // 9. Legacy single-byte encodings
   //
 
   /**
@@ -1020,21 +1195,20 @@
   }());
 
   //
-  // 9. Legacy multi-byte Chinese (simplified) encodings
+  // 10. Legacy multi-byte Chinese (simplified) encodings
   //
 
-  // 9.1 gbk
+  // 9.1 gb18030
 
   /**
    * @constructor
-   * @param {boolean} gb18030 True if decoding gb18030, false otherwise.
    * @param {{fatal: boolean}} options
    */
-  function GBKDecoder(gb18030, options) {
+  function GB18030Decoder(options) {
     var fatal = options.fatal;
-    var /** @type {number} */ gbk_first = 0x00,
-        /** @type {number} */ gbk_second = 0x00,
-        /** @type {number} */ gbk_third = 0x00;
+    var /** @type {number} */ gb18030_first = 0x00,
+        /** @type {number} */ gb18030_second = 0x00,
+        /** @type {number} */ gb18030_third = 0x00;
     /**
      * @param {ByteInputStream} byte_pointer The byte stream to decode.
      * @return {?number} The next code point decoded, or null if not enough
@@ -1042,59 +1216,59 @@
      */
     this.decode = function(byte_pointer) {
       var bite = byte_pointer.get();
-      if (bite === EOF_byte && gbk_first === 0x00 &&
-          gbk_second === 0x00 && gbk_third === 0x00) {
+      if (bite === EOF_byte && gb18030_first === 0x00 &&
+          gb18030_second === 0x00 && gb18030_third === 0x00) {
         return EOF_code_point;
       }
       if (bite === EOF_byte &&
-          (gbk_first !== 0x00 || gbk_second !== 0x00 || gbk_third !== 0x00)) {
-        gbk_first = 0x00;
-        gbk_second = 0x00;
-        gbk_third = 0x00;
+          (gb18030_first !== 0x00 || gb18030_second !== 0x00 || gb18030_third !== 0x00)) {
+        gb18030_first = 0x00;
+        gb18030_second = 0x00;
+        gb18030_third = 0x00;
         decoderError(fatal);
       }
       byte_pointer.offset(1);
       var code_point;
-      if (gbk_third !== 0x00) {
+      if (gb18030_third !== 0x00) {
         code_point = null;
         if (inRange(bite, 0x30, 0x39)) {
           code_point = indexGB18030CodePointFor(
-              (((gbk_first - 0x81) * 10 + (gbk_second - 0x30)) * 126 +
-               (gbk_third - 0x81)) * 10 + bite - 0x30);
+              (((gb18030_first - 0x81) * 10 + (gb18030_second - 0x30)) * 126 +
+               (gb18030_third - 0x81)) * 10 + bite - 0x30);
         }
-        gbk_first = 0x00;
-        gbk_second = 0x00;
-        gbk_third = 0x00;
+        gb18030_first = 0x00;
+        gb18030_second = 0x00;
+        gb18030_third = 0x00;
         if (code_point === null) {
           byte_pointer.offset(-3);
           return decoderError(fatal);
         }
         return code_point;
       }
-      if (gbk_second !== 0x00) {
+      if (gb18030_second !== 0x00) {
         if (inRange(bite, 0x81, 0xFE)) {
-          gbk_third = bite;
+          gb18030_third = bite;
           return null;
         }
         byte_pointer.offset(-2);
-        gbk_first = 0x00;
-        gbk_second = 0x00;
+        gb18030_first = 0x00;
+        gb18030_second = 0x00;
         return decoderError(fatal);
       }
-      if (gbk_first !== 0x00) {
-        if (inRange(bite, 0x30, 0x39) && gb18030) {
-          gbk_second = bite;
+      if (gb18030_first !== 0x00) {
+        if (inRange(bite, 0x30, 0x39)) {
+          gb18030_second = bite;
           return null;
         }
-        var lead = gbk_first;
+        var lead = gb18030_first;
         var pointer = null;
-        gbk_first = 0x00;
+        gb18030_first = 0x00;
         var offset = bite < 0x7F ? 0x40 : 0x41;
         if (inRange(bite, 0x40, 0x7E) || inRange(bite, 0x80, 0xFE)) {
           pointer = (lead - 0x81) * 190 + (bite - offset);
         }
         code_point = pointer === null ? null :
-            indexCodePointFor(pointer, index('gbk'));
+            indexCodePointFor(pointer, index('gb18030'));
         if (pointer === null) {
           byte_pointer.offset(-1);
         }
@@ -1110,7 +1284,7 @@
         return 0x20AC;
       }
       if (inRange(bite, 0x81, 0xFE)) {
-        gbk_first = bite;
+        gb18030_first = bite;
         return null;
       }
       return decoderError(fatal);
@@ -1119,10 +1293,9 @@
 
   /**
    * @constructor
-   * @param {boolean} gb18030 True if decoding gb18030, false otherwise.
    * @param {{fatal: boolean}} options
    */
-  function GBKEncoder(gb18030, options) {
+  function GB18030Encoder(options) {
     var fatal = options.fatal;
     /**
      * @param {ByteOutputStream} output_byte_stream Output byte stream.
@@ -1138,15 +1311,12 @@
       if (inRange(code_point, 0x0000, 0x007F)) {
         return output_byte_stream.emit(code_point);
       }
-      var pointer = indexPointerFor(code_point, index('gbk'));
+      var pointer = indexPointerFor(code_point, index('gb18030'));
       if (pointer !== null) {
         var lead = div(pointer, 190) + 0x81;
         var trail = pointer % 190;
         var offset = trail < 0x3F ? 0x40 : 0x41;
         return output_byte_stream.emit(lead, trail + offset);
-      }
-      if (pointer === null && !gb18030) {
-        return encoderError(code_point);
       }
       pointer = indexGB18030PointerFor(code_point);
       var byte1 = div(div(div(pointer, 10), 126), 10);
@@ -1163,25 +1333,15 @@
   }
 
   /** @param {{fatal: boolean}} options */
-  name_to_encoding['gbk'].getEncoder = function(options) {
-    return new GBKEncoder(false, options);
-  };
-  /** @param {{fatal: boolean}} options */
-  name_to_encoding['gbk'].getDecoder = function(options) {
-    return new GBKDecoder(false, options);
-  };
-
-  // 9.2 gb18030
-  /** @param {{fatal: boolean}} options */
   name_to_encoding['gb18030'].getEncoder = function(options) {
-    return new GBKEncoder(true, options);
+    return new GB18030Encoder(options);
   };
   /** @param {{fatal: boolean}} options */
   name_to_encoding['gb18030'].getDecoder = function(options) {
-    return new GBKDecoder(true, options);
+    return new GB18030Decoder(options);
   };
 
-  // 9.3 hz-gb-2312
+  // 10.2 hz-gb-2312
 
   /**
    * @constructor
@@ -1231,7 +1391,7 @@
         var code_point = null;
         if (inRange(bite, 0x21, 0x7E)) {
           code_point = indexCodePointFor((lead - 1) * 190 +
-                                         (bite + 0x3F), index('gbk'));
+                                         (bite + 0x3F), index('gb18030'));
         }
         if (bite === 0x0A) {
           hzgb2312 = false;
@@ -1297,7 +1457,7 @@
         hzgb2312 = true;
         return output_byte_stream.emit(0x7E, 0x7B);
       }
-      var pointer = indexPointerFor(code_point, index('gbk'));
+      var pointer = indexPointerFor(code_point, index('gb18030'));
       if (pointer === null) {
         return encoderError(code_point);
       }
@@ -1320,10 +1480,10 @@
   };
 
   //
-  // 10. Legacy multi-byte Chinese (traditional) encodings
+  // 11. Legacy multi-byte Chinese (traditional) encodings
   //
 
-  // 10.1 big5
+  // 11.1 big5
 
   /**
    * @constructor
@@ -1445,10 +1605,10 @@
 
 
   //
-  // 11. Legacy multi-byte Japanese encodings
+  // 12. Legacy multi-byte Japanese encodings
   //
 
-  // 11.1 euc.jp
+  // 12.1 euc.jp
 
   /**
    * @constructor
@@ -1577,7 +1737,7 @@
     return new EUCJPDecoder(options);
   };
 
-  // 11.2 iso-2022-jp
+  // 12.2 iso-2022-jp
 
   /**
    * @constructor
@@ -1800,7 +1960,7 @@
     return new ISO2022JPDecoder(options);
   };
 
-  // 11.3 shift_jis
+  // 12.3 shift_jis
 
   /**
    * @constructor
@@ -1905,10 +2065,10 @@
   };
 
   //
-  // 12. Legacy multi-byte Korean encodings
+  // 13. Legacy multi-byte Korean encodings
   //
 
-  // 12.1 euc-kr
+  // 13.1 euc-kr
 
   /**
    * @constructor
@@ -2026,10 +2186,14 @@
 
 
   //
-  // 13. Legacy utf-16 encodings
+  // 14. Legacy miscellaneous encodings
   //
 
-  // 13.1 utf-16
+  // 14.1 replacement
+
+  // Not needed - API throws TypeError
+
+  // 14.2 utf-16
 
   /**
    * @constructor
@@ -2131,16 +2295,7 @@
     };
   }
 
-  /** @param {{fatal: boolean}} options */
-  name_to_encoding['utf-16le'].getEncoder = function(options) {
-    return new UTF16Encoder(false, options);
-  };
-  /** @param {{fatal: boolean}} options */
-  name_to_encoding['utf-16le'].getDecoder = function(options) {
-    return new UTF16Decoder(false, options);
-  };
-
-  // 13.2 utf-16be
+  // 14.3 utf-16be
   /** @param {{fatal: boolean}} options */
   name_to_encoding['utf-16be'].getEncoder = function(options) {
     return new UTF16Encoder(true, options);
@@ -2150,6 +2305,18 @@
     return new UTF16Decoder(true, options);
   };
 
+  // 14.4 utf-16le
+  /** @param {{fatal: boolean}} options */
+  name_to_encoding['utf-16le'].getEncoder = function(options) {
+    return new UTF16Encoder(false, options);
+  };
+  /** @param {{fatal: boolean}} options */
+  name_to_encoding['utf-16le'].getDecoder = function(options) {
+    return new UTF16Decoder(false, options);
+  };
+
+  // 14.5 x-user-defined
+  // TODO: Implement this encoding.
 
   // NOTE: currently unused
   /**
@@ -2171,181 +2338,6 @@
     }
     return label;
   }
-
-  //
-  // Implementation of Text Encoding Web API
-  //
-
-  /** @const */ var DEFAULT_ENCODING = 'utf-8';
-
-  /**
-   * @constructor
-   * @param {string=} opt_encoding The label of the encoding;
-   *     defaults to 'utf-8'.
-   * @param {{fatal: boolean}=} options
-   */
-  function TextEncoder(opt_encoding, options) {
-    if (!(this instanceof TextEncoder)) {
-      return new TextEncoder(opt_encoding, options);
-    }
-    opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
-    options = Object(options);
-    /** @private */
-    this._encoding = getEncoding(opt_encoding);
-    if (this._encoding === null || (this._encoding.name !== 'utf-8' &&
-                                    this._encoding.name !== 'utf-16le' &&
-                                    this._encoding.name !== 'utf-16be'))
-      throw new TypeError('Unknown encoding: ' + opt_encoding);
-    /** @private @type {boolean} */
-    this._streaming = false;
-    /** @private */
-    this._encoder = null;
-    /** @private @type {{fatal: boolean}=} */
-    this._options = { fatal: Boolean(options.fatal) };
-
-    if (Object.defineProperty) {
-      Object.defineProperty(
-          this, 'encoding',
-          { get: function() { return this._encoding.name; } });
-    } else {
-      this.encoding = this._encoding.name;
-    }
-
-    return this;
-  }
-
-  TextEncoder.prototype = {
-    /**
-     * @param {string=} opt_string The string to encode.
-     * @param {{stream: boolean}=} options
-     */
-    encode: function encode(opt_string, options) {
-      opt_string = opt_string ? String(opt_string) : '';
-      options = Object(options);
-      // TODO: any options?
-      if (!this._streaming) {
-        this._encoder = this._encoding.getEncoder(this._options);
-      }
-      this._streaming = Boolean(options.stream);
-
-      var bytes = [];
-      var output_stream = new ByteOutputStream(bytes);
-      var input_stream = new CodePointInputStream(opt_string);
-      while (input_stream.get() !== EOF_code_point) {
-        this._encoder.encode(output_stream, input_stream);
-      }
-      if (!this._streaming) {
-        /** @type {number} */
-        var last_byte;
-        do {
-          last_byte = this._encoder.encode(output_stream, input_stream);
-        } while (last_byte !== EOF_byte);
-        this._encoder = null;
-      }
-      return new Uint8Array(bytes);
-    }
-  };
-
-
-  /**
-   * @constructor
-   * @param {string=} opt_encoding The label of the encoding;
-   *     defaults to 'utf-8'.
-   * @param {{fatal: boolean}=} options
-   */
-  function TextDecoder(opt_encoding, options) {
-    if (!(this instanceof TextDecoder)) {
-      return new TextDecoder(opt_encoding, options);
-    }
-    opt_encoding = opt_encoding ? String(opt_encoding) : DEFAULT_ENCODING;
-    options = Object(options);
-    /** @private */
-    this._encoding = getEncoding(opt_encoding);
-    if (this._encoding === null)
-      throw new TypeError('Unknown encoding: ' + opt_encoding);
-
-    /** @private @type {boolean} */
-    this._streaming = false;
-    /** @private @type {boolean} */
-    this._BOMseen = false;
-    /** @private */
-    this._decoder = null;
-    /** @private @type {{fatal: boolean}=} */
-    this._options = { fatal: Boolean(options.fatal) };
-
-    if (Object.defineProperty) {
-      Object.defineProperty(
-          this, 'encoding',
-          { get: function() { return this._encoding.name; } });
-    } else {
-      this.encoding = this._encoding.name;
-    }
-
-    return this;
-  }
-
-  // TODO: Issue if input byte stream is offset by decoder
-  // TODO: BOM detection will not work if stream header spans multiple calls
-  // (last N bytes of previous stream may need to be retained?)
-  TextDecoder.prototype = {
-    /**
-     * @param {ArrayBufferView=} opt_view The buffer of bytes to decode.
-     * @param {{stream: boolean}=} options
-     */
-    decode: function decode(opt_view, options) {
-      if (opt_view && !('buffer' in opt_view && 'byteOffset' in opt_view &&
-                        'byteLength' in opt_view)) {
-        throw new TypeError('Expected ArrayBufferView');
-      } else if (!opt_view) {
-        opt_view = new Uint8Array(0);
-      }
-      options = Object(options);
-
-      if (!this._streaming) {
-        this._decoder = this._encoding.getDecoder(this._options);
-        this._BOMseen = false;
-      }
-      this._streaming = Boolean(options.stream);
-
-      var bytes = new Uint8Array(opt_view.buffer,
-                                 opt_view.byteOffset,
-                                 opt_view.byteLength);
-      var input_stream = new ByteInputStream(bytes);
-
-      var output_stream = new CodePointOutputStream();
-
-      /** @type {number} */
-      var code_point;
-
-      while (input_stream.get() !== EOF_byte) {
-        code_point = this._decoder.decode(input_stream);
-        if (code_point !== null && code_point !== EOF_code_point) {
-          output_stream.emit(code_point);
-        }
-      }
-      if (!this._streaming) {
-        do {
-          code_point = this._decoder.decode(input_stream);
-          if (code_point !== null && code_point !== EOF_code_point) {
-            output_stream.emit(code_point);
-          }
-        } while (code_point !== EOF_code_point &&
-                 input_stream.get() != EOF_byte);
-        this._decoder = null;
-      }
-
-      var result = output_stream.string();
-      if (!this._BOMseen && result.length) {
-        this._BOMseen = true;
-        if (['utf-8', 'utf-16le', 'utf-16be'].indexOf(this.encoding) !== -1 &&
-           result.charCodeAt(0) === 0xFEFF) {
-          result = result.substring(1);
-        }
-      }
-
-      return result;
-    }
-  };
 
   if (!('TextEncoder' in global)) global['TextEncoder'] = TextEncoder;
   if (!('TextDecoder' in global)) global['TextDecoder'] = TextDecoder;
