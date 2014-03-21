@@ -10,12 +10,16 @@ Basic examples and unit tests are included.
 ### API Overview ###
 
 Scripts
-```js
+```html
   <!-- Required for non-Unicode encodings -->
   <script src="encoding-indexes.js"></script>
 
   <script src="encoding.js"></script>
+```
+
 Basic Usage
+
+```js
   var uint8array = TextEncoder(encoding).encode(string);
   var string = TextDecoder(encoding).decode(uint8array);
 Streaming Decode
