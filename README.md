@@ -22,7 +22,11 @@ Basic Usage
 ```js
   var uint8array = TextEncoder(encoding).encode(string);
   var string = TextDecoder(encoding).decode(uint8array);
+```
+
 Streaming Decode
+
+```js
   var string = "", decoder = TextDecoder(encoding), buffer;
   while (buffer = next_chunk()) { 
     string += decoder.decode(buffer, {stream:true});
