@@ -1,0 +1,26 @@
+{
+  "name": "stringencoding",
+  "author": "Joshua Bell <inexorabletash@gmail.com>",
+  "contributors": [
+    "Rick Eyre <rick.eyre@outlook.com"
+  ],
+  "version": "0.0.0",
+  "description": "Polyfill for the Encoding Living Standard's API.",
+  "main": "encoding.js",
+  "files": [
+    "encoding.js",
+    "encoding-indexes.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inexorabletash/stringencoding.git"
+  },
+  "keywords": [
+    "encoding",
+    "decoding"
+  ],
+  "bugs": {
+    "url": "https://github.com/inexorabletash/stringencoding/issues"
+  },
+  "homepage": "https://github.com/inexorabletash/stringencoding"
+}
