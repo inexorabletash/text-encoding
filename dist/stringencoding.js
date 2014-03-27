@@ -2391,7 +2391,7 @@ module.exports = {
     TextDecoder: TextDecoder
   };
 
-}(typeof window !== 'undefined' ? window : undefined));
+}(typeof self !== 'undefined' ? self : undefined));
 
 },{"./encoding-indexes":1}]},{},[2])
 (2)
