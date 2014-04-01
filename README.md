@@ -1,4 +1,4 @@
-stringencoding
+text-encoding
 ==============
 
 This is a polyfill for the [Encoding Living Standard](http://encoding.spec.whatwg.org/)
@@ -6,6 +6,30 @@ API for the Web, allowing encoding and decoding of textual data to and from Type
 buffers for binary data in JavaScript
 
 Basic examples and unit tests are included.
+
+### Install ###
+
+There are a few ways you can get the `text-encoding` library.
+
+#### Node ####
+
+`text-encoding` is on `npm`. Simply run:
+
+```js
+npm install text-encoding
+```
+
+Or add it to your `package.json` dependencies.
+
+#### Bower ####
+
+`text-encoding` is on `bower` as well. Install with bower like so:
+
+```js
+bower install text-encoding
+```
+
+Or add it to your `bower.json` dependencies.
 
 ### API Overview ###
 
