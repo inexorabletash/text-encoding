@@ -31,15 +31,16 @@ bower install text-encoding
 
 Or add it to your `bower.json` dependencies.
 
-### API Overview ###
+### HTML Page Usage ###
 
-Scripts
 ```html
   <!-- Required for non-Unicode encodings -->
   <script src="encoding-indexes.js"></script>
 
   <script src="encoding.js"></script>
 ```
+
+### API Overview ###
 
 Basic Usage
 
@@ -72,7 +73,7 @@ iso-2022-kr utf-16 utf-16be
 (Some encodings may be supported under other names, e.g. ascii, iso-8859-1, etc.
 See [Encoding](http://encoding.spec.whatwg.org/) for additional labels for each encoding.)
 
-Encodings other than utf-8, utf-16 and utf-16be require an additional 
+Encodings other than **utf-8**, **utf-16le** and **utf-16be** require an additional 
 `encoding-indexes.js` file to be included. It is rather large 
-(539kB uncompressed, 182kB gzipped); portions may be deleted if 
+(541kB uncompressed, 186kB gzipped); portions may be deleted if 
 support for some encodings is not required.
