@@ -34,9 +34,8 @@ Or add it to your `bower.json` dependencies.
 ### HTML Page Usage ###
 
 ```html
-  <!-- Required for non-Unicode encodings -->
+  <!-- Required for non-UTF encodings -->
   <script src="encoding-indexes.js"></script>
-
   <script src="encoding.js"></script>
 ```
 
