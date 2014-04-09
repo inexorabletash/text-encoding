@@ -14,10 +14,9 @@ function assert_string_equals(actual, expected, description) {
   assert_equals(actual.length, expected.length,
                 description + ": string lengths");
 
-  var i, a, b;
-  for (i = 0; i < actual.length; i++) {
-    a = actual.charCodeAt(i);
-    b = expected.charCodeAt(i);
+  for (var i = 0; i < actual.length; i++) {
+    var a = actual.charCodeAt(i);
+    var b = expected.charCodeAt(i);
     if (a !== b)
       assert_true(false,
                   description +
@@ -55,44 +54,28 @@ function cpname(n) {
   return 'U+' + ('000000' + n.toString(16).toUpperCase()).slice(-w);
 }
 
-function genblock(from, len) {
-  var i, j, point, offset;
-  var size, block;
-
-  // determine size required:
-  //    1 unit   for each point from U+000000 through U+00D7FF
-  //    0 units                      U+00D800 through U+00DFFF
-  //    1 unit                       U+00E000 through U+00FFFF
-  //    2 units                      U+010000 through U+10FFFF
-  function overlap(min1, max1, min2, max2) {
-    return Math.max(0, Math.min(max1, max2) - Math.max(min1, min2));
-  }
-  size = (overlap(from, from+len, 0x000000, 0x00D800) +
-          overlap(from, from+len, 0x00E000, 0x010000) +
-          overlap(from, from+len, 0x010000, 0x110000)*2);
-
-  block = new Uint16Array(size);
-  for (i = 0, j = 0; i < len; i++) {
-    point = from + i;
-    if (0xD800 <= point && point <= 0xDFFF)
+function genblock(from, len, skip) {
+  var block = [];
+  for (var i = 0; i < len; i += skip) {
+    var cp = from + i;
+    if (0xD800 <= cp && cp <= 0xDFFF)
       continue;
-    else if (point <= 0xFFFF)
-      block[j++] = point;
-    else {
-      offset = point - 0x10000;
-      block[j++] = 0xD800 + (offset >> 10);
-      block[j++] = 0xDC00 + (offset & 0x3FF);
+    if (cp < 0x10000) {
+      block.push(String.fromCharCode(cp));
+      continue;
     }
+    cp = cp - 0x10000;
+    block.push(String.fromCharCode(0xD800 + (cp >> 10)));
+    block.push(String.fromCharCode(0xDC00 + (cp & 0x3FF)));
   }
-  return String.fromCharCode.apply(null, block);
+  return block.join('');
 }
 
 function test_utf_roundtrip () {
   var MIN_CODEPOINT = 0;
   var MAX_CODEPOINT = 0x10FFFF;
   var BLOCK_SIZE = 0x1000;
-
-  var block, block_tag, i, j, encoded, decoded, exp_encoded, exp_decoded;
+  var SKIP_SIZE = 31;
 
   var TE_U16LE = new TextEncoder("UTF-16LE");
   var TD_U16LE = new TextDecoder("UTF-16LE");
@@ -103,13 +86,13 @@ function test_utf_roundtrip () {
   var TE_U8    = new TextEncoder("UTF-8");
   var TD_U8    = new TextDecoder("UTF-8");
 
-  for (i = MIN_CODEPOINT; i < MAX_CODEPOINT; i += BLOCK_SIZE) {
-    block_tag = cpname(i) + " - " + cpname(i + BLOCK_SIZE - 1);
-    block = genblock(i, BLOCK_SIZE);
+  for (var i = MIN_CODEPOINT; i < MAX_CODEPOINT; i += BLOCK_SIZE) {
+    var block_tag = cpname(i) + " - " + cpname(i + BLOCK_SIZE - 1);
+    var block = genblock(i, BLOCK_SIZE, SKIP_SIZE);
 
     // test UTF-16LE, UTF-16BE, and UTF-8 encodings against themselves
-    encoded = TE_U16LE.encode(block);
-    decoded = TD_U16LE.decode(encoded);
+    var encoded = TE_U16LE.encode(block);
+    var decoded = TD_U16LE.decode(encoded);
     assert_string_equals(block, decoded, "UTF-16LE round trip " + block_tag);
 
     encoded = TE_U16BE.encode(block);
@@ -121,11 +104,11 @@ function test_utf_roundtrip () {
     assert_string_equals(block, decoded, "UTF-8 round trip " + block_tag);
 
     // test TextEncoder(UTF-8) against the older idiom
-    exp_encoded = encode_utf8(block);
+    var exp_encoded = encode_utf8(block);
     assert_array_equals(encoded, exp_encoded,
                         "UTF-8 reference encoding " + block_tag);
 
-    exp_decoded = decode_utf8(exp_encoded);
+    var exp_decoded = decode_utf8(exp_encoded);
     assert_string_equals(decoded, exp_decoded,
                          "UTF-8 reference decoding " + block_tag);
   }
