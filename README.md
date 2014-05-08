@@ -77,10 +77,10 @@ Encodings other than **utf-8**, **utf-16le** and **utf-16be** require an additio
 (541kB uncompressed, 186kB gzipped); portions may be deleted if 
 support for some encodings is not required.
 
-As required by the specification, encoding to legacy encodings (other than **utf-8**,
-**utf-16le** and **utf-16be**) is not supported. If you want to try it out, you can
-force a non-standard behavior by passing an option to TextEncoder. Please see the
-following example using the windows-1252 encoding :
+As required by the specification, only encoding to **utf-8**,
+**utf-16le** and **utf-16be** is supported. If you want to try it out, you can
+force a non-standard behavior by passing the `NONSTANDARD_allowLegacyEncoding`
+option to TextEncoder. For example:
 
 ```js
   var uint8array = TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }).encode(text);
