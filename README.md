@@ -83,5 +83,9 @@ force a non-standard behavior by passing the `NONSTANDARD_allowLegacyEncoding`
 option to TextEncoder. For example:
 
 ```js
-  var uint8array = TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }).encode(text);
+  var uint8array = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }).encode(text);
 ```
+
+Obviously, the above won't work if you're using the polyfill in a browse that
+natively supports the TextEncoder API natively, since it will only support
+options from the [Encoding](http://encoding.spec.whatwg.org/) standard.
