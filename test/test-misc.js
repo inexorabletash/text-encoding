@@ -17,6 +17,16 @@
 
 // Miscellaneous tests
 
+test(function() {
+  assert_false(/\[native code\]/.test(String(TextDecoder)),
+               'Native implementation present - polyfill not tested.');
+}, "TextDecoder Polyfill (will fail if natively supported)");
+
+test(function() {
+  assert_false(/\[native code\]/.test(String(TextEncoder)),
+               'Native implementation present - polyfill not tested.');
+}, "TextEncoder Polyfill (will fail if natively supported)");
+
 test(
   function() {
     var badStrings = [
@@ -186,7 +196,7 @@ test(
       "macintosh", "windows-874", "windows-1250", "windows-1251",
       "windows-1252", "windows-1253", "windows-1254", "windows-1255",
       "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic",
-      "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis",
+      "gb18030", "big5", "euc-jp", "iso-2022-jp", "shift_jis",
       "euc-kr"];
 
     encodings.forEach(function (encoding) {
@@ -194,8 +204,6 @@ test(
       for (var i = 0; i < 128; ++i) {
 
         // Encodings that have escape codes in 0x00-0x7F
-        if (encoding === "hz-gb-2312" && i === 0x7E)
-          continue;
         if (encoding === "iso-2022-jp" && i === 0x1B)
           continue;
 
@@ -232,7 +240,7 @@ test(
 
     var utf_encodings = ["utf-8", "utf-16le", "utf-16be"];
 
-    var legacy_encodings = ["ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gb18030", "hz-gb-2312", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr"];
+    var legacy_encodings = ["ibm866", "iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-10", "iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "koi8-r", "koi8-u", "macintosh", "windows-874", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", "windows-1256", "windows-1257", "windows-1258", "x-mac-cyrillic", "gb18030", "big5", "euc-jp", "iso-2022-jp", "shift_jis", "euc-kr"];
 
     utf_encodings.forEach(function(encoding) {
       assert_equals(new TextDecoder(encoding).encoding, encoding);
@@ -249,17 +257,14 @@ test(
 
 test(
   function () {
-    assert_true(TextEncoder('utf-8') instanceof TextEncoder);
-    assert_true(TextDecoder('utf-8') instanceof TextDecoder);
-  },
-  "Must call constructors with 'new'"
-);
-
-test(
-  function () {
     [
-      'csiso2022kr', 'iso-2022-cn', 'iso-2022-cn-ext', 'iso-2022-kr'
+      'csiso2022kr',
+      'hz-gb-2312',
+      'iso-2022-cn',
+      'iso-2022-cn-ext',
+      'iso-2022-kr'
     ].forEach(function(encoding) {
+
       assert_throws({name: 'TypeError'},
                     function() { new TextEncoder(encoding); });
 
@@ -273,7 +278,6 @@ test(
                       var decoder = new TextDecoder(encoding, {fatal: false});
                     });
     });
-
  },
   "Replacement encoding"
 );
