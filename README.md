@@ -12,6 +12,12 @@ on server frameworks or particular module schemes.
 
 Basic examples and unit tests are included.
 
+> The [Encoding Living Standard](http://encoding.spec.whatwg.org/) continues to 
+> be refined, as browsers attempt to converge on compatible encodings. Ideally,
+> this polyfill would track those changes, but is currently behind. Pull requests
+> to track the spec are appreciated, as the maintainer hasn't had time to make
+> the changes himself.
+
 ### Install ###
 
 There are a few ways you can get the `text-encoding` library.
