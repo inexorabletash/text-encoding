@@ -27,6 +27,24 @@ test(function() {
                'Native implementation present - polyfill not tested.');
 }, "TextEncoder Polyfill (will fail if natively supported)");
 
+test(function() {
+  assert_true('encoding' in new TextEncoder());
+  assert_equals(new TextEncoder().encoding, 'utf-8');
+  assert_equals(new TextEncoder('utf-16le').encoding, 'utf-16le');
+
+  assert_true('encoding' in new TextDecoder());
+  assert_equals(new TextDecoder().encoding, 'utf-8');
+  assert_equals(new TextDecoder('utf-16le').encoding, 'utf-16le');
+  assert_true('fatal' in new TextDecoder());
+  assert_false(new TextDecoder('utf-8').fatal);
+  assert_true(new TextDecoder('utf-8', {fatal: true}).fatal);
+  assert_true('ignoreBOM' in new TextDecoder());
+  assert_false(new TextDecoder('utf-8').ignoreBOM);
+  assert_true(new TextDecoder('utf-8', {ignoreBOM: true}).ignoreBOM);
+
+
+}, 'Attributes');
+
 test(
   function() {
     var badStrings = [
@@ -140,6 +158,17 @@ test(
     assert_not_equals(new TextDecoder('utf-16le').decode(new Uint8Array(utf16be_bom.concat(utf16le))), string);
     assert_not_equals(new TextDecoder('utf-16be').decode(new Uint8Array(utf8_bom.concat(utf16be))), string);
     assert_not_equals(new TextDecoder('utf-16be').decode(new Uint8Array(utf16le_bom.concat(utf16be))), string);
+
+    // ignore BOMs
+    assert_equals(new TextDecoder('utf-8', {ignoreBOM: true})
+                  .decode(new Uint8Array(utf8_bom.concat(utf8))),
+                  "\uFEFF" + string);
+    assert_equals(new TextDecoder('utf-16le', {ignoreBOM: true})
+                  .decode(new Uint8Array(utf16le_bom.concat(utf16le))),
+                  "\uFEFF" + string);
+    assert_equals(new TextDecoder('utf-16be', {ignoreBOM: true})
+                  .decode(new Uint8Array(utf16be_bom.concat(utf16be))),
+                  "\uFEFF" + string);
   },
   "Byte-order marks"
 );
