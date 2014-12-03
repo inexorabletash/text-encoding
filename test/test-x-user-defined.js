@@ -17,7 +17,7 @@
 
 test(
   function() {
-    assert_throws({name: 'TypeError'}, function() { new TextEncoder('x-user-defined'); });
+    assert_throws({name: 'RangeError'}, function() { new TextEncoder('x-user-defined'); });
 
     var decoder = new TextDecoder('x-user-defined');
     for (var i = 0; i < 0x80; ++i) {

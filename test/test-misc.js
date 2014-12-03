@@ -87,7 +87,7 @@ test(
 
     bad.forEach(
       function(t) {
-        assert_throws({name: 'EncodingError'}, function () {
+        assert_throws({name: 'TypeError'}, function () {
           new TextDecoder(t.encoding, {fatal: true}).decode(new Uint8Array(t.input));
         });
       });
@@ -250,15 +250,15 @@ test(
 
 test(
   function () {
-    assert_throws({name: 'EncodingError'}, function() { new TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array([0xff])); });
+    assert_throws({name: 'TypeError'}, function() { new TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array([0xff])); });
     // This should not hang:
     new TextDecoder("utf-8").decode(new Uint8Array([0xff]));
 
-    assert_throws({name: 'EncodingError'}, function() { new TextDecoder("utf-16le", {fatal: true}).decode(new Uint8Array([0x00])); });
+    assert_throws({name: 'TypeError'}, function() { new TextDecoder("utf-16le", {fatal: true}).decode(new Uint8Array([0x00])); });
     // This should not hang:
     new TextDecoder("utf-16le").decode(new Uint8Array([0x00]));
 
-    assert_throws({name: 'EncodingError'}, function() { new TextDecoder("utf-16be", {fatal: true}).decode(new Uint8Array([0x00])); });
+    assert_throws({name: 'TypeError'}, function() { new TextDecoder("utf-16be", {fatal: true}).decode(new Uint8Array([0x00])); });
     // This should not hang:
     new TextDecoder("utf-16be").decode(new Uint8Array([0x00]));
   },
@@ -286,7 +286,7 @@ test(
 
     legacy_encodings.forEach(function(encoding) {
       assert_equals(new TextDecoder(encoding).encoding, encoding);
-      assert_throws({name: 'TypeError'}, function() { new TextEncoder(encoding); });
+      assert_throws({name: 'RangeError'}, function() { new TextEncoder(encoding); });
     });
   },
   "Non-UTF encodings supported only for decode, not encode"
@@ -302,15 +302,15 @@ test(
       'iso-2022-kr'
     ].forEach(function(encoding) {
 
-      assert_throws({name: 'TypeError'},
+      assert_throws({name: 'RangeError'},
                     function() { new TextEncoder(encoding); });
 
-      assert_throws({name: 'TypeError'},
+      assert_throws({name: 'RangeError'},
                     function() {
                       var decoder = new TextDecoder(encoding, {fatal: true});
                     });
 
-      assert_throws({name: 'TypeError'},
+      assert_throws({name: 'RangeError'},
                     function() {
                       var decoder = new TextDecoder(encoding, {fatal: false});
                     });
