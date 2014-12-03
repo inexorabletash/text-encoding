@@ -204,7 +204,8 @@ test(
       for (var i = 0; i < 128; ++i) {
 
         // Encodings that have escape codes in 0x00-0x7F
-        if (encoding === "iso-2022-jp" && i === 0x1B)
+        if (encoding === "iso-2022-jp" &&
+            (i === 0x0E || i === 0x0F || i === 0x1B))
           continue;
 
         string += String.fromCharCode(i);
