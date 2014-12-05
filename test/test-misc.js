@@ -318,3 +318,28 @@ test(
  },
   "Replacement encoding"
 );
+
+test(function() {
+  var decoder = new TextDecoder();
+  var bytes = [65, 66, 97, 98, 99, 100, 101, 102, 103, 104, 67, 68, 69, 70, 71, 72];
+  var chars = "ABabcdefghCDEFGH";
+  var buffer = new Uint8Array(bytes).buffer;
+  assert_equals(decoder.decode(buffer), chars,
+               'Decoding from ArrayBuffer should match expected text.');
+
+  ['Uint8Array', 'Int8Array', 'Uint8ClampedArray',
+   'Uint16Array', 'Int16Array',
+   'Uint32Array', 'Int32Array',
+   'Float32Array', 'Float64Array'].forEach(function(typeName) {
+     var type = self[typeName];
+
+     var array = new type(buffer);
+     assert_equals(decoder.decode(array), chars,
+                   'Decoding from ' + typeName + ' should match expected text.');
+
+     var subset = new type(buffer, type.BYTES_PER_ELEMENT, 8 / type.BYTES_PER_ELEMENT);
+     assert_equals(decoder.decode(subset),
+                   chars.substring(type.BYTES_PER_ELEMENT, type.BYTES_PER_ELEMENT + 8),
+                   'Decoding from ' + typeName + ' should match expected text.');
+   });
+}, 'ArrayBuffer, ArrayBufferView and buffer offsets');
