@@ -10,13 +10,7 @@ only *decoding*. It is also implemented to match the specification's algorithms,
 than for performance. The intended use is within Web pages, so it has no dependency
 on server frameworks or particular module schemes.
 
-Basic examples and unit tests are included.
-
-> The [Encoding Living Standard](http://encoding.spec.whatwg.org/) continues to 
-> be refined, as browsers attempt to converge on compatible encodings. Ideally,
-> this polyfill would track those changes, but is currently behind. Pull requests
-> to track the spec are appreciated, as the maintainer hasn't had time to make
-> the changes himself.
+Basic examples and tests are included.
 
 ### Install ###
 
@@ -80,7 +74,7 @@ See [Encoding](http://encoding.spec.whatwg.org/) for additional labels for each 
 
 Encodings other than **utf-8**, **utf-16le** and **utf-16be** require an additional 
 `encoding-indexes.js` file to be included. It is rather large 
-(541kB uncompressed, 186kB gzipped); portions may be deleted if 
+(596kB uncompressed, 188kB gzipped); portions may be deleted if 
 support for some encodings is not required.
 
 ### Non-Standard Behavior ###
@@ -100,5 +94,5 @@ natively supports the TextEncoder API natively, since the polyfill won't be used
 You'd need to fork and modify the polyfill to... not be a polyfill.
 
 The polyfill also allows construction of encoder/decoder objects without the
-`new` keyword. This nonstandard behavior is supported for constructing DOM
-objects in Firefox but not other browsers.
+`new` keyword. (This non-standard behavior is supported for constructing DOM
+objects in Firefox but not other browsers.)
