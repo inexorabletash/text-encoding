@@ -4,7 +4,7 @@
   "contributors": [
     "Rick Eyre <rick.eyre@outlook.com>"
   ],
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "Polyfill for the Encoding Living Standard's API.",
   "main": "index.js",
   "files": [
