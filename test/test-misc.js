@@ -301,3 +301,21 @@ test(function() {
                    'Decoding from ' + typeName + ' should match expected text.');
    });
 }, 'ArrayBuffer, ArrayBufferView and buffer offsets');
+
+test(function() {
+  assert_throws({name: 'RangeError'},
+                function() { new TextDecoder(null); },
+                'Null should coerce to "null" and be invalid encoding name.');
+
+  assert_throws({name: 'TypeError'},
+                function() { new TextDecoder('utf-8', ''); },
+                'String should not coerce to dictionary.');
+
+  assert_throws({name: 'TypeError'},
+                function() { new TextDecoder('utf-8').decode(null, ''); },
+                'String should not coerce to dictionary.');
+
+  assert_throws({name: 'RangeError'},
+                function() { new TextEncoder(null); },
+                'Null should coerce to "null" and be invalid encoding name.');
+}, 'Invalid parameters');
