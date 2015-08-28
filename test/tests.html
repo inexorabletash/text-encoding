@@ -11,6 +11,10 @@
 <script src="testharnessreport.js"></script>
 <script>
 setup({explicit_timeout: true});
+
+// Hide native implementation so polyfill will be used
+self.TextEncoder = null;
+self.TextDecoder = null;
 </script>
 
 <script src="../lib/encoding-indexes.js"></script>
