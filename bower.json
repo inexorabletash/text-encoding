@@ -13,7 +13,7 @@
     "living",
     "standards"
   ],
-  "license": "Apache-2.0",
+  "license": "Unlicense",
   "ignore": [
     "**/.*",
     "test",
