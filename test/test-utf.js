@@ -1,9 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 // See LICENSE.md for more information.
 
-// NOTE: Requires testharness.js
-// http://www.w3.org/2008/webapps/wiki/Harness
-
 // Extension to testharness.js API which avoids logging enormous strings
 // on a coding failure.
 function assert_string_equals(actual, expected, description) {

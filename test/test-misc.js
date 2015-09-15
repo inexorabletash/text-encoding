@@ -1,9 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 // See LICENSE.md for more information.
 
-// NOTE: Requires testharness.js
-// http://www.w3.org/2008/webapps/wiki/Harness
-
 var UTF_ENCODINGS = ['utf-8', 'utf-16le', 'utf-16be'];
 
 var LEGACY_ENCODINGS = [

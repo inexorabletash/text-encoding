@@ -1,9 +1,6 @@
 // This is free and unencumbered software released into the public domain.
 // See LICENSE.md for more information.
 
-// NOTE: Requires testharness.js
-// http://www.w3.org/2008/webapps/wiki/Harness
-
 test(
   function() {
     assert_throws({name: 'RangeError'}, function() { new TextEncoder('x-user-defined'); });
