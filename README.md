@@ -91,7 +91,13 @@ var uint8array = new TextEncoder(
 
 But note that the above won't work if you're using the polyfill in a browser that
 natively supports the TextEncoder API natively, since the polyfill won't be used!
-You'd need to fork and modify the polyfill to... not be a polyfill.
+In Order to use this TextEncoder anyway there is a 'CustomTextEncoder' and 'CustomTextDecoder'
+attached.
+
+```js
+var uint8array = new CustomTextEncoder(
+  'windows-1252', { NONSTANDARD_allowLegacyEncoding: true }).encode(text);
+```
 
 To support the legacy encodings (which may be stateful), the TextEncoder `encode()`
 method accepts an optional dictionary and `stream` option,
