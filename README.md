@@ -104,7 +104,3 @@ To support the legacy encodings (which may be stateful), the TextEncoder `encode
 method accepts an optional dictionary and `stream` option,
 e.g. `encoder.encode(string, {stream: true});` This is not needed for the
 stateless UTF encodings since the input is always in complete code points.
-
-The polyfill also allows construction of encoder/decoder objects without the
-`new` keyword. (This non-standard behavior is supported for constructing DOM
-objects in Firefox but not other browsers.)
