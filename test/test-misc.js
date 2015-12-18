@@ -305,3 +305,10 @@ test(function() {
                 function() { new TextEncoder(null); },
                 'Null should coerce to "null" and be invalid encoding name.');
 }, 'Invalid parameters');
+
+test(function() {
+  assert_array_equals(
+    [249,249,249,233,249,235,249,234,164,81,164,202],
+    new TextEncoder('big5', {NONSTANDARD_allowLegacyEncoding: true})
+      .encode('\u2550\u255E\u2561\u256A\u5341\u5345'));
+}, 'NONSTANDARD - regression tests');
