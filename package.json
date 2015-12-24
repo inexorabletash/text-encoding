@@ -24,5 +24,6 @@
   "bugs": {
     "url": "https://github.com/inexorabletash/text-encoding/issues"
   },
-  "homepage": "https://github.com/inexorabletash/text-encoding"
+  "homepage": "https://github.com/inexorabletash/text-encoding",
+  "license": "Unlicense"
 }
