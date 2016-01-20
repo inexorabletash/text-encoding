@@ -320,4 +320,25 @@ test(function() {
       0xA8, 0xBC,
       0x81, 0x35, 0xF4, 0x37
     ])), '\u1E3F\uE7C7');
-}, 'GB 18030 2000 vs 2005');
+}, 'GB 18030 2000 vs 2005: U+1E3F, U+E7C7 (decoding)');
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/22
+  assert_array_equals(
+    new TextEncoder('gb18030', {NONSTANDARD_allowLegacyEncoding: true})
+      .encode('\u1E3F\uE7C7'),
+    [
+      0xA8, 0xBC,
+      0x81, 0x35, 0xF4, 0x37
+    ]);
+}, 'NONSTANDARD - GB 18030 2000 vs 2005: U+1E3F, U+E7C7 (encoding)');
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/17
+  assert_throws(
+    new TypeError,
+    function() {
+      new TextEncoder('gb18030', {NONSTANDARD_allowLegacyEncoding: true})
+        .encode('\uE5E5');
+    });
+}, 'NONSTANDARD - gb18030: U+E5E5 (encoding)');
