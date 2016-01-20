@@ -312,3 +312,12 @@ test(function() {
     new TextEncoder('big5', {NONSTANDARD_allowLegacyEncoding: true})
       .encode('\u2550\u255E\u2561\u256A\u5341\u5345'));
 }, 'NONSTANDARD - regression tests');
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/22
+  assert_equals(
+    new TextDecoder('gb18030').decode(new Uint8Array([
+      0xA8, 0xBC,
+      0x81, 0x35, 0xF4, 0x37
+    ])), '\u1E3F\uE7C7');
+}, 'GB 18030 2000 vs 2005');
