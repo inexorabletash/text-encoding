@@ -342,3 +342,18 @@ test(function() {
         .encode('\uE5E5');
     });
 }, 'NONSTANDARD - gb18030: U+E5E5 (encoding)');
+
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/15
+  var encoder =
+      new TextEncoder('iso-2022-jp', {NONSTANDARD_allowLegacyEncoding: true});
+
+  [
+    //'\u000E', '\u000F', '\u001B',
+    '\u00A5\u000E', //'\u00A5\u000F',  '\u00A5\u001B'
+  ].forEach(function(s) {
+    assert_throws(new TypeError, function() { encoder.encode(s); });
+  });
+
+}, 'NONSTANDARD - iso-2022-jp encoding attack (encoding)');
