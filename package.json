@@ -2,9 +2,17 @@
   "name": "text-encoding",
   "author": "Joshua Bell <inexorabletash@gmail.com>",
   "contributors": [
-    "Rick Eyre <rick.eyre@outlook.com>"
+    "Joshua Bell <inexorabletash@gmail.com>",
+    "Rick Eyre <rick.eyre@outlook.com>",
+    "Eugen Podaru <eugen.podaru@live.com>",
+    "Filip Dupanović <filip.dupanovic@gmail.com>",
+    "Anne van Kesteren <annevk@annevk.nl>",
+    "Author: Francis Avila <francisga@gmail.com>",
+    "Michael J. Ryan <tracker1@gmail.com>",
+    "Pierre Queinnec <pierre@queinnec.org>",
+    "Zack Weinberg <zackw@panix.com>"
   ],
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Polyfill for the Encoding Living Standard's API.",
   "main": "index.js",
   "files": [
