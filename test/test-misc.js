@@ -312,3 +312,48 @@ test(function() {
     new TextEncoder('big5', {NONSTANDARD_allowLegacyEncoding: true})
       .encode('\u2550\u255E\u2561\u256A\u5341\u5345'));
 }, 'NONSTANDARD - regression tests');
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/22
+  assert_equals(
+    new TextDecoder('gb18030').decode(new Uint8Array([
+      0xA8, 0xBC,
+      0x81, 0x35, 0xF4, 0x37
+    ])), '\u1E3F\uE7C7');
+}, 'GB 18030 2000 vs 2005: U+1E3F, U+E7C7 (decoding)');
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/22
+  assert_array_equals(
+    new TextEncoder('gb18030', {NONSTANDARD_allowLegacyEncoding: true})
+      .encode('\u1E3F\uE7C7'),
+    [
+      0xA8, 0xBC,
+      0x81, 0x35, 0xF4, 0x37
+    ]);
+}, 'NONSTANDARD - GB 18030 2000 vs 2005: U+1E3F, U+E7C7 (encoding)');
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/17
+  assert_throws(
+    new TypeError,
+    function() {
+      new TextEncoder('gb18030', {NONSTANDARD_allowLegacyEncoding: true})
+        .encode('\uE5E5');
+    });
+}, 'NONSTANDARD - gb18030: U+E5E5 (encoding)');
+
+
+test(function() {
+  // Regression test for https://github.com/whatwg/encoding/issues/15
+  var encoder =
+      new TextEncoder('iso-2022-jp', {NONSTANDARD_allowLegacyEncoding: true});
+
+  [
+    //'\u000E', '\u000F', '\u001B',
+    '\u00A5\u000E', //'\u00A5\u000F',  '\u00A5\u001B'
+  ].forEach(function(s) {
+    assert_throws(new TypeError, function() { encoder.encode(s); });
+  });
+
+}, 'NONSTANDARD - iso-2022-jp encoding attack (encoding)');
