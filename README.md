@@ -49,14 +49,14 @@ Or add it to your `bower.json` dependencies.
 Basic Usage
 
 ```js
-  var uint8array = TextEncoder(encoding).encode(string);
-  var string = TextDecoder(encoding).decode(uint8array);
+  var uint8array = new TextEncoder(encoding).encode(string);
+  var string = new TextDecoder(encoding).decode(uint8array);
 ```
 
 Streaming Decode
 
 ```js
-  var string = "", decoder = TextDecoder(encoding), buffer;
+  var string = "", decoder = new TextDecoder(encoding), buffer;
   while (buffer = next_chunk()) {
     string += decoder.decode(buffer, {stream:true});
   }
