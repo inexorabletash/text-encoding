@@ -3,7 +3,7 @@
 
 test(
   function() {
-    assert_throws({name: 'RangeError'}, function() { new TextEncoder('x-user-defined'); });
+    assert_equals(new TextEncoder('x-user-defined').encoding, 'utf-8');
 
     var decoder = new TextDecoder('x-user-defined');
     for (var i = 0; i < 0x80; ++i) {

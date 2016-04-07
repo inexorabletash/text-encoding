@@ -1,7 +1,7 @@
 // This is free and unencumbered software released into the public domain.
 // See LICENSE.md for more information.
 
-var UTF_ENCODINGS = ['utf-8', 'utf-16le', 'utf-16be'];
+var THE_ENCODING = ['utf-8'];
 
 var LEGACY_ENCODINGS = [
   'ibm866', 'iso-8859-2', 'iso-8859-3', 'iso-8859-4', 'iso-8859-5',
@@ -11,8 +11,13 @@ var LEGACY_ENCODINGS = [
   'windows-1252', 'windows-1253', 'windows-1254', 'windows-1255',
   'windows-1256', 'windows-1257', 'windows-1258', 'x-mac-cyrillic',
   'gbk', 'gb18030', 'big5', 'euc-jp', 'iso-2022-jp', 'shift_jis',
-  'euc-kr'
+  'euc-kr', 'utf-16le', 'utf-16be'
 ];
+
+var ASCII_SUPERSETS = THE_ENCODING.concat(LEGACY_ENCODINGS)
+      .filter(function(e) {
+        return e !== 'utf-16le' && e !== 'utf-16be';
+      });
 
 // Miscellaneous tests
 
@@ -29,7 +34,6 @@ test(function() {
 test(function() {
   assert_true('encoding' in new TextEncoder());
   assert_equals(new TextEncoder().encoding, 'utf-8');
-  assert_equals(new TextEncoder('utf-16le').encoding, 'utf-16le');
 
   assert_true('encoding' in new TextDecoder());
   assert_equals(new TextDecoder().encoding, 'utf-8');
@@ -53,8 +57,8 @@ test(function() {
 
   badStrings.forEach(
     function(t) {
-      var encoded = new TextEncoder('utf-8').encode(t.input);
-      var decoded = new TextDecoder('utf-8').decode(encoded);
+      var encoded = new TextEncoder().encode(t.input);
+      var decoded = new TextDecoder().decode(encoded);
       assert_equals(t.expected, decoded);
     });
 }, 'bad data');
@@ -167,21 +171,40 @@ test(function() {
 }, 'Encoding names');
 
 test(function() {
-  ['utf-8', 'utf-16le', 'utf-16be'].forEach(function(encoding) {
-    var string = '\x00123ABCabc\x80\xFF\u0100\u1000\uFFFD\uD800\uDC00\uDBFF\uDFFF';
-    var encoded = new TextEncoder(encoding).encode(string);
+  var string = '\x00123ABCabc\x80\xFF\u0100\u1000\uFFFD\uD800\uDC00\uDBFF\uDFFF';
+  var cases = [
+    {
+      encoding: 'utf-8',
+      encoded: [0, 49, 50, 51, 65, 66, 67, 97, 98, 99, 194, 128, 195, 191, 196,
+                128, 225, 128, 128, 239, 191, 189, 240, 144, 128, 128, 244, 143,
+                191, 191]
+    },
+    {
+      encoding: 'utf-16le',
+      encoded: [0, 0, 49, 0, 50, 0, 51, 0, 65, 0, 66, 0, 67, 0, 97, 0, 98, 0,
+                99, 0, 128, 0, 255, 0, 0, 1, 0, 16, 253, 255, 0, 216, 0, 220,
+                255, 219, 255, 223]
+    },
+    {
+      encoding: 'utf-16be',
+      encoded: [0, 0, 0, 49, 0, 50, 0, 51, 0, 65, 0, 66, 0, 67, 0, 97, 0, 98, 0,
+                99, 0, 128, 0, 255, 1, 0, 16, 0, 255, 253, 216, 0, 220, 0, 219,
+                255, 223, 255]
+      }
+  ];
 
+  cases.forEach(function(c) {
     for (var len = 1; len <= 5; ++len) {
-      var out = '', decoder = new TextDecoder(encoding);
-      for (var i = 0; i < encoded.length; i += len) {
+      var out = '', decoder = new TextDecoder(c.encoding);
+      for (var i = 0; i < c.encoded.length; i += len) {
         var sub = [];
-        for (var j = i; j < encoded.length && j < i + len; ++j) {
-          sub.push(encoded[j]);
+        for (var j = i; j < c.encoded.length && j < i + len; ++j) {
+          sub.push(c.encoded[j]);
         }
         out += decoder.decode(new Uint8Array(sub), {stream: true});
       }
       out += decoder.decode();
-      assert_equals(out, string, 'streaming decode ' + encoding);
+      assert_equals(out, string, 'streaming decode ' + c.encoding);
     }
   });
 }, 'Streaming Decode');
@@ -193,9 +216,7 @@ test(function() {
 }, 'Shift_JIS Decode');
 
 test(function() {
-  var encodings = ['utf-8'].concat(LEGACY_ENCODINGS);
-
-  encodings.forEach(function(encoding) {
+  ASCII_SUPERSETS.forEach(function(encoding) {
     var string = '', bytes = [];
     for (var i = 0; i < 128; ++i) {
 
@@ -207,9 +228,8 @@ test(function() {
       string += String.fromCharCode(i);
       bytes.push(i);
     }
-    var ascii_encoded = new TextEncoder('utf-8').encode(string);
+    var ascii_encoded = new TextEncoder().encode(string);
     assert_equals(new TextDecoder(encoding).decode(ascii_encoded), string, encoding);
-      //assert_array_equals(new TextEncoder(encoding).encode(string), bytes, encoding);
   });
 }, 'Supersets of ASCII decode ASCII correctly');
 
@@ -228,16 +248,11 @@ test(function() {
 }, 'Non-fatal errors at EOF');
 
 test(function() {
-  UTF_ENCODINGS.forEach(function(encoding) {
-    assert_equals(new TextDecoder(encoding).encoding, encoding);
-    assert_equals(new TextEncoder(encoding).encoding, encoding);
-  });
-
   LEGACY_ENCODINGS.forEach(function(encoding) {
     assert_equals(new TextDecoder(encoding).encoding, encoding);
-    assert_throws({name: 'RangeError'}, function() { new TextEncoder(encoding); });
+    assert_equals(new TextEncoder(encoding).encoding, 'utf-8');
   });
-}, 'Non-UTF encodings supported only for decode, not encode');
+}, 'Legacy encodings supported only for decode, not encode');
 
 test(function() {
   [
@@ -248,8 +263,7 @@ test(function() {
     'iso-2022-kr'
   ].forEach(function(encoding) {
 
-    assert_throws({name: 'RangeError'},
-                  function() { new TextEncoder(encoding); });
+    assert_equals(new TextEncoder(encoding).encoding, 'utf-8');
 
     assert_throws({name: 'RangeError'},
                   function() {
@@ -300,10 +314,6 @@ test(function() {
   assert_throws({name: 'TypeError'},
                 function() { new TextDecoder('utf-8').decode(null, ''); },
                 'String should not coerce to dictionary.');
-
-  assert_throws({name: 'RangeError'},
-                function() { new TextEncoder(null); },
-                'Null should coerce to "null" and be invalid encoding name.');
 }, 'Invalid parameters');
 
 test(function() {
@@ -357,3 +367,15 @@ test(function() {
   });
 
 }, 'NONSTANDARD - iso-2022-jp encoding attack (encoding)');
+
+['utf-16le', 'utf-16be'].forEach(function(encoding) {
+  test(function() {
+    var encoder = new TextEncoder(encoding, {NONSTANDARD_allowLegacyEncoding: true});
+    var decoder = new TextDecoder(encoding);
+
+    var sample = "z\xA2\u6C34\uD834\uDD1E\uDBFF\uDFFD";
+
+    assert_equals(decoder.decode(encoder.encode(sample)), sample);
+
+  }, 'NONSTANDARD - ' + encoding + ' (encoding)');
+});

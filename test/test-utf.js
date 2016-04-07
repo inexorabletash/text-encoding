@@ -71,19 +71,26 @@ function genblock(from, len, skip) {
   return block.join('');
 }
 
+function encode_utf16le(s) { return encode_utf16(s, true); }
+function encode_utf16be(s) { return encode_utf16(s, false); }
+function encode_utf16(s, le) {
+  var a = new Uint8Array(s.length * 2), view = new DataView(a.buffer);
+  s.split('').forEach(function(c, i) {
+    view.setUint16(i * 2, c.charCodeAt(0), le);
+  });
+  return a;
+}
+
 function test_utf_roundtrip () {
   var MIN_CODEPOINT = 0;
   var MAX_CODEPOINT = 0x10FFFF;
   var BLOCK_SIZE = 0x1000;
   var SKIP_SIZE = 31;
 
-  var TE_U16LE = new TextEncoder("UTF-16LE");
   var TD_U16LE = new TextDecoder("UTF-16LE");
-
-  var TE_U16BE = new TextEncoder("UTF-16BE");
   var TD_U16BE = new TextDecoder("UTF-16BE");
 
-  var TE_U8    = new TextEncoder("UTF-8");
+  var TE_U8    = new TextEncoder();
   var TD_U8    = new TextDecoder("UTF-8");
 
   for (var i = MIN_CODEPOINT; i < MAX_CODEPOINT; i += BLOCK_SIZE) {
@@ -91,11 +98,11 @@ function test_utf_roundtrip () {
     var block = genblock(i, BLOCK_SIZE, SKIP_SIZE);
 
     // test UTF-16LE, UTF-16BE, and UTF-8 encodings against themselves
-    var encoded = TE_U16LE.encode(block);
+    var encoded = encode_utf16le(block);
     var decoded = TD_U16LE.decode(encoded);
     assert_string_equals(block, decoded, "UTF-16LE round trip " + block_tag);
 
-    encoded = TE_U16BE.encode(block);
+    encoded = encode_utf16be(block);
     decoded = TD_U16BE.decode(encoded);
     assert_string_equals(block, decoded, "UTF-16BE round trip " + block_tag);
 
@@ -130,10 +137,6 @@ function test_utf_samples () {
 
   cases.forEach(
     function(t) {
-      var encoded = new TextEncoder(t.encoding).encode(sample);
-      assert_array_equals(encoded, t.expected,
-                          "expected equal encodings - " + t.encoding);
-
       var decoded = new TextDecoder(t.encoding)
                         .decode(new Uint8Array(t.expected));
       assert_equals(decoded, sample,
