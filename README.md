@@ -88,7 +88,7 @@ support for some encodings is not required.
 
 ### Non-Standard Behavior ###
 
-As required by the specification, only encoding to **utf-8**, is
+As required by the specification, only encoding to **utf-8** is
 supported. If you want to try it out, you can force a non-standard
 behavior by passing the `NONSTANDARD_allowLegacyEncoding` option to
 TextEncoder and a label. For example:
