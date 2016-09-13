@@ -2,16 +2,16 @@
 <script src="lib/encoding-indexes.js"></script>
 <script src="lib/encoding.js"></script>
 <script>
-function encodeArrayOfStrings(strings, encoding) {
+function encodeArrayOfStrings(strings) {
   var encoder, encoded, len, i, bytes, view, offset;
 
-  encoder = new TextEncoder(encoding);
+  encoder = new TextEncoder();
   encoded = [];
 
   len = Uint32Array.BYTES_PER_ELEMENT;
   for (i = 0; i < strings.length; i += 1) {
     len += Uint32Array.BYTES_PER_ELEMENT;
-    encoded[i] = new TextEncoder(encoding).encode(strings[i]);
+    encoded[i] = new TextEncoder().encode(strings[i]);
     len += encoded[i].byteLength;
   }
 
@@ -52,7 +52,7 @@ function decodeArrayOfStrings(buffer, encoding) {
 }
 
 var strings = ["Hello", "string", "encoding!"];
-var buffer = encodeArrayOfStrings(strings, "utf-8");
+var buffer = encodeArrayOfStrings(strings);
 var results = decodeArrayOfStrings(buffer, "utf-8");
 document.write("Encoded " + JSON.stringify(strings) + "<br>");
 document.write("Decoded " + JSON.stringify(results) + "<br>");
