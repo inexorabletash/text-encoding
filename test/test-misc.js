@@ -379,3 +379,9 @@ test(function() {
 
   }, 'NONSTANDARD - ' + encoding + ' (encoding)');
 });
+
+test(function() {
+  var encoder = new TextEncoder();
+  assert_array_equals([].slice.call(encoder.encode(false)), [102, 97, 108, 115, 101]);
+  assert_array_equals([].slice.call(encoder.encode(0)), [48]);
+}, 'encode() called with falsy arguments (polyfill bindings)');
