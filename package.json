@@ -12,7 +12,7 @@
     "Pierre Queinnec <pierre@queinnec.org>",
     "Zack Weinberg <zackw@panix.com>"
   ],
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Polyfill for the Encoding Living Standard's API.",
   "main": "index.js",
   "files": [
@@ -31,7 +31,6 @@
   ],
   "browser": {
     "./lib/encoding-indexes.js": false
-
   },
   "bugs": {
     "url": "https://github.com/inexorabletash/text-encoding/issues"
