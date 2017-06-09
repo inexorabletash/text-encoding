@@ -1,5 +1,5 @@
 {
-  "name": "text-encoding",
+  "name": "text-encoding-polyfill",
   "author": "Joshua Bell <inexorabletash@gmail.com>",
   "contributors": [
     "Joshua Bell <inexorabletash@gmail.com>",
@@ -12,7 +12,7 @@
     "Pierre Queinnec <pierre@queinnec.org>",
     "Zack Weinberg <zackw@panix.com>"
   ],
-  "version": "0.6.4",
+  "version": "0.6.7",
   "description": "Polyfill for the Encoding Living Standard's API.",
   "main": "index.js",
   "files": [
@@ -29,6 +29,9 @@
     "decoding",
     "living standard"
   ],
+  "browser": {
+    "./lib/encoding-indexes.js": false
+  },
   "bugs": {
     "url": "https://github.com/inexorabletash/text-encoding/issues"
   },
