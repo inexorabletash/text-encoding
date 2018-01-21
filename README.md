@@ -16,35 +16,29 @@ Basic examples and tests are included.
 
 ### Install ###
 
-There are a few ways you can get the `text-encoding` library.
-
-#### Node ####
-
-`text-encoding` is on `npm`. Simply run:
-
-```js
-npm install text-encoding
-```
-
-Or add it to your `package.json` dependencies.
-
-#### Bower ####
-
-`text-encoding` is on `bower` as well. Install with bower like so:
-
-```js
-bower install text-encoding
-```
-
-Or add it to your `bower.json` dependencies.
+There are a few ways you can get and use the `text-encoding` library.
 
 ### HTML Page Usage ###
+
+Clone the repo and include the files directly:
 
 ```html
   <!-- Required for non-UTF encodings -->
   <script src="encoding-indexes.js"></script>
   <script src="encoding.js"></script>
 ```
+
+This is the only use case the developer cares about. If you want those
+fancy module and/or package manager things that are popular these days
+you should probably use a different library.
+
+#### Package Managers ####
+
+The package is published to **npm** and **bower** as `text-encoding`.
+Use through these is not really supported, since they aren't used by
+the developer of the library. Using `require()` in interesting ways
+probably breaks. Patches welcome, as long as they don't break the
+basic use of the files via `<script>`.
 
 ### API Overview ###
 
