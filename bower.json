@@ -21,7 +21,7 @@
     "living",
     "standards"
   ],
-  "license": "Unlicense",
+  "license": "(Unlicense OR Apache-2.0)",
   "ignore": [
     "**/.*",
     "test",
